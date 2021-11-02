@@ -13,9 +13,11 @@
 {-# LANGUAGE TypeApplications           #-}
 {-# LANGUAGE TypeFamilies               #-}
 {-# LANGUAGE TypeOperators              #-}
+{-# LANGUAGE StandaloneDeriving              #-}
+
 {-# OPTIONS_GHC -fno-ignore-interface-pragmas #-}
 
-module ContractExample.GuessGame where
+module ContractExample.GuessGameIndexed where
 
 -- TRIM TO HERE
 -- A game with two players. Player 1 thinks of a secret word
@@ -28,7 +30,7 @@ import           Control.Monad         (void)
 import qualified Data.ByteString.Char8 as C
 import qualified Data.Map              as Map
 import           Data.Maybe            (catMaybes)
-import           Ledger                (Address, Datum (Datum), ScriptContext, TxOutTx, Validator, Value)
+import           Ledger                (pubKeyHash,Address, Datum (Datum), ScriptContext, TxOutTx, Validator, Value,PubKeyHash)
 import qualified Ledger
 import qualified Ledger.Ada            as Ada
 import qualified Ledger.Constraints    as Constraints
@@ -38,6 +40,7 @@ import           Plutus.Contract
 import qualified PlutusTx
 import           PlutusTx.Prelude      hiding (pure, (<$>))
 import qualified Prelude               as Haskell
+
 
 ------------------------------------------------------------
 
@@ -58,9 +61,9 @@ instance Scripts.ValidatorTypes Game where
     type instance RedeemerType Game = ClearString
     type instance DatumType Game = HashedString
 
-gameInstance :: Scripts.TypedValidator Game
-gameInstance = Scripts.mkTypedValidator @Game
-    $$(PlutusTx.compile [|| validateGuess ||])
+gameInstance :: Locker -> Scripts.TypedValidator Game
+gameInstance locker = Scripts.mkTypedValidator @Game
+    ($$(PlutusTx.compile [|| validateGuess ||]) `PlutusTx.applyCode` PlutusTx.liftCode locker)
     $$(PlutusTx.compile [|| wrap ||]) where
         wrap = Scripts.wrapValidator @HashedString @ClearString
 
@@ -74,20 +77,22 @@ hashString = HashedString . sha2_256 . toBuiltin . C.pack
 clearString :: Haskell.String -> ClearString
 clearString = ClearString . toBuiltin . C.pack
 
+type Locker= Ledger.PubKeyHash
+
 -- | The validation function (Datum -> Redeemer -> ScriptContext -> Bool)
-validateGuess :: HashedString -> ClearString -> ScriptContext -> Bool
-validateGuess hs cs _ = isGoodGuess hs cs
+validateGuess :: Locker -> HashedString -> ClearString -> ScriptContext -> Bool
+validateGuess _ hs cs _ = isGoodGuess hs cs
 
 isGoodGuess :: HashedString -> ClearString -> Bool
 isGoodGuess (HashedString actual) (ClearString guess') = actual == sha2_256 guess'
 
 -- | The validator script of the game.
-gameValidator :: Validator
-gameValidator = Scripts.validatorScript gameInstance
+gameValidator :: Locker -> Validator
+gameValidator locker = Scripts.validatorScript $ gameInstance locker
 
 -- | The address of the game (the hash of its validator script)
-gameAddress :: Address
-gameAddress = Ledger.scriptAddress gameValidator
+gameAddress :: Locker -> Address
+gameAddress locker= Ledger.scriptAddress $ gameValidator locker
 
 -- | Parameters for the "lock" endpoint
 data LockParams = LockParams
@@ -97,9 +102,12 @@ data LockParams = LockParams
     deriving stock (Haskell.Eq, Haskell.Show, Generic)
     deriving anyclass (FromJSON, ToJSON, ToSchema, ToArgument)
 
+deriving instance ToArgument ContractInstanceId
+
 --  | Parameters for the "guess" endpoint
-newtype GuessParams = GuessParams
+data GuessParams = GuessParams
     { guessWord :: Haskell.String
+    , gameId :: ContractInstanceId
     }
     deriving stock (Haskell.Eq, Haskell.Show, Generic)
     deriving anyclass (FromJSON, ToJSON, ToSchema, ToArgument)
@@ -109,14 +117,17 @@ lock :: AsContractError e => Promise () GameSchema e ()
 lock = endpoint @"lock" @LockParams $ \(LockParams secret amt) -> do
     logInfo @Haskell.String $ "Pay " <> Haskell.show amt <> " to the script"
     let tx         = Constraints.mustPayToTheScript (hashString secret) amt
-    void (submitTxConstraints gameInstance tx)
+    locker <- pubKeyHash Haskell.<$> ownPubKey
+    void (submitTxConstraints (gameInstance locker) tx)
 
 -- | The "guess" contract endpoint. See note [Contract endpoints]
 guess :: AsContractError e => Promise () GameSchema e ()
-guess = endpoint @"guess" @GuessParams $ \(GuessParams theGuess) -> do
+guess = endpoint @"guess" @GuessParams $ \(GuessParams theGuess cid) -> do
     -- Wait for script to have a UTxO of a least 1 lovelace
     logInfo @Haskell.String "Waiting for script to have a UTxO of at least 1 lovelace"
-    utxos <- fundsAtAddressGeq gameAddress (Ada.lovelaceValueOf 1)
+    locker <- pubKeyHash Haskell.<$> ownPubKey
+
+    utxos <- fundsAtAddressGeq   cid (Ada.lovelaceValueOf 1)
 
     let redeemer = clearString theGuess
         tx       = collectFromScript utxos redeemer
@@ -132,7 +143,8 @@ guess = endpoint @"guess" @GuessParams $ \(GuessParams theGuess) -> do
     -- In a real use-case, we would not submit the transaction if the guess is
     -- wrong.
     logInfo @Haskell.String "Submitting transaction to guess the secret word"
-    void (submitTxConstraintsSpending gameInstance utxos tx)
+
+    void (submitTxConstraintsSpending (gameInstance locker) utxos tx)
 
 -- | Find the secret word in the Datum of the UTxOs
 findSecretWordValue :: UtxoMap -> Maybe HashedString
@@ -150,6 +162,7 @@ game :: AsContractError e => Contract () GameSchema e ()
 game = do
     logInfo @Haskell.String "Waiting for guess or lock endpoint..."
     selectList [lock, guess]
+    
 
 {- Note [Contract endpoints]
 
