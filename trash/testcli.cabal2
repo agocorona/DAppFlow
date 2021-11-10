@@ -1,17 +1,17 @@
 Cabal-Version:      2.4
 Name:               test
 Version:            0.1.0.0
-Author:              Alberto Gómez Corona
-Maintainer:          agocorona@gmail.com
+Author:              Lars Bruenjes
+Maintainer:          brunjlar@gmail.com
 Build-Type:          Simple
 Copyright:           © 2021 Lars Bruenjes
 License:             Apache-2.0
 License-files:       LICENSE
 
-executable        pabtest
-  main-is:            pabtest.hs
-  other-modules:      ContractExample.GuessGameIndexed
-  hs-source-dirs:     .
+executable        testconsole
+  main-is:            ContractCLI.hs
+  hs-source-dirs:      .
+  exposed-modules:     
   build-depends:       aeson
                      , bytestring
                      , base ^>=4.14.1.0
@@ -21,21 +21,12 @@ executable        pabtest
                      , plutus-ledger
                      , plutus-tx-plugin
                      , plutus-tx
-                     , plutus-pab
                      , text
                      , ghc-boot-th
                      , optparse-applicative
                      , aeson-pretty
                      , freer-simple
                      , freer-extras
-                     , data-default
-                     , stm
-                     , prettyprinter
-                     , plutus-ledger-api
-                     , plutus-use-cases
-                     , uuid
-
-                     
                      
          
                      
