@@ -34,6 +34,8 @@ executable        pabtest
                      , plutus-ledger-api
                      , plutus-use-cases
                      , uuid
+                     , transient
+                     , transient-universe
 
                      
                      

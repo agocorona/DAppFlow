@@ -21,8 +21,9 @@ import ContractExample.GuessGameIndexed
 import Control.Concurrent.STM as STM
 import Control.Monad.Freer
 import qualified Control.Monad.Freer.Error as Error
-import Control.Monad.Freer.Reader
+import Control.Monad.Freer.Reader hiding (local)
 import Control.Monad.IO.Class
+import Control.Monad
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Default (Default (def))
 import Data.IORef
@@ -63,27 +64,31 @@ import Wallet.Emulator.Types (Wallet (..))
 import qualified Data.Text                        as T
 import qualified Data.List as Ada
 
-
+import Transient.Internals
+import Transient.Move.Internals
+import Transient.Move.Utils
+import Control.Applicative
+import Data.ByteString.Lazy.Char8 as BS (unpack)
 
 type PABC contract a = Eff (PABEffects (Builtin contract) (Simulator.SimulatorState (Builtin contract))) a
 
 type PAB a = PABC GuessGameContracts a
 
 
-runPAB :: PAB a -> IO a
-runPAB = runPABC
+runPAB :: MonadIO m => PAB a -> m a
+runPAB =  liftIO . runPABC
 
 
 
 
-main = Simulator.runSimulationWith handlers $ do
+main3 = Simulator.runSimulationWith handlers $ do
 
-     cid <- Simulator.activateContract (Wallet 1) Lock
+     cid  <- Simulator.activateContract (Wallet 1) Lock
      cid2 <- Simulator.activateContract (Wallet 2) Lock
      cid3 <- Simulator.activateContract (Wallet 3) Guess
      cid4 <- Simulator.activateContract (Wallet 4) Guess
 
-    
+
      waitNSlots 3
      callEndpointOnInstance  cid "lock" LockParams{secretWord="world", amount= Ada.adaValueOf 200,lockIndex=1}
      waitNSlots 3
@@ -99,9 +104,9 @@ main = Simulator.runSimulationWith handlers $ do
      waitNSlots 10
      Simulator.logString @(Builtin GuessGameContracts) "Balances at the end of the simulation"
      b <- Simulator.currentBalances
-     Simulator.logBalances @(Builtin GuessGameContracts) b  
+     Simulator.logBalances @(Builtin GuessGameContracts) b
 
-  
+
   where
   handlers :: SimulatorEffectHandlers (Builtin GuessGameContracts)
   handlers =
@@ -109,26 +114,46 @@ main = Simulator.runSimulationWith handlers $ do
     $ interpret (contractHandler (Builtin.handleBuiltin @GuessGameContracts))
 
 
-main1 = do
-  initPAB simulatorHandlers
-  cid  <- runPAB $ Simulator.activateContract (Wallet 1) Lock
-  cid2 <- runPAB $ Simulator.activateContract (Wallet 2) Lock 
-  cid3 <- runPAB $ Simulator.activateContract (Wallet 3) Guess 
-  -- cid4 <- runPAB $ Simulator.activateContract (Wallet 4) Guess
 
-  runPAB $  waitNSlots 3
+main= keep $ initNode $  do
+    local $ initPAB simulatorHandlers
 
-  runPAB $ callEndpointOnInstance  cid "lock" LockParams{secretWord="world", amount= Ada.adaValueOf 200}
-  runPAB $ waitNSlots 3
-  runPAB $ callEndpointOnInstance cid2 "lock" LockParams{secretWord="world2", amount= Ada.adaValueOf 200}
-  runPAB $ waitNSlots 3
+    firstCont
 
-  runPAB $ callEndpointOnInstance cid3 "guess" GuessParams{guessWord="world2"}
-  runPAB $ waitNSlots 3
-  runPAB $ do
-     Simulator.logString @(Builtin GuessGameContracts) "Balances at the end of the simulation"
-     b <- Simulator.currentBalances
-     Simulator.logBalances @(Builtin GuessGameContracts) b  
+    locks <|> guesses <|>  balances
+
+  where
+
+  rind= unsafePerformIO $ newIORef 0
+  locks= do
+    (amo ::Int,word) <-  minput "lock" "enter lock amount and the key. Example: 100 myKey"
+    ind <- localIO $ atomicModifyIORef rind $ \i -> (i+1,i+1)
+    local $ runPAB $ do
+      cid  <- runPAB $ Simulator.activateContract (Wallet 1) Lock
+      callEndpointOnInstance  cid "lock" LockParams{secretWord=BS.unpack word, amount= Ada.adaValueOf $ fromIntegral amo,lockIndex=ind}
+      return()
+
+  guesses=do
+    minput "guess" "guess a lock"  :: Cloud ()
+    ind <- localIO $ readIORef rind
+
+    if ind==0 then minput "" "no lock has been done yet. Do it yourself!" else do
+      (index,guessw)  <- foldr (<|>) empty $ map (\i -> (,) <$> return i <*> minput ("g" <> show i) ("guess "++ show i)) [1..ind]
+      local $ runPAB $ do
+        cid3 <-  Simulator.activateContract (Wallet 3) Guess
+        callEndpointOnInstance  cid3 "guess" GuessParams{guessWord=guessw,guessIndex=index}
+
+        waitNSlots 3
+  
+  balances= do
+    minput "bal" "display account balances" :: Cloud ()
+    local $ runPAB $ do
+      Simulator.logString @(Builtin  GuessGameContracts) "Balances at the end of the simulation"
+      b <-  Simulator.currentBalances
+      Simulator.logBalances @(Builtin GuessGameContracts) b
+      return()
+
+
 
 simulatorHandlers :: EffectHandlers (Builtin GuessGameContracts) (SimulatorState (Builtin GuessGameContracts))
 simulatorHandlers = mkSimulatorHandlers def def handler
@@ -177,7 +202,7 @@ instance HasDefinitions TestContracts where
 
 endpoints' :: Contract () GameSchema T.Text ()
 endpoints'= endpoints >> endpoints'
-  
+
 
 
 
@@ -191,8 +216,8 @@ endpoints'= endpoints >> endpoints'
 {-# NOINLINE state #-}
 state = unsafePerformIO $ newIORef undefined
 
-initPAB :: EffectHandlers t env -> IO ()
-initPAB effectHandlers = do
+initPAB :: MonadIO m => EffectHandlers t env -> m ()
+initPAB effectHandlers = liftIO $ do
   let EffectHandlers
         { initialiseEnvironment,
           onStartup
