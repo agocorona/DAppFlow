@@ -1,17 +1,22 @@
 Write Plutus smart contracts and DApps as continuous workflows.
+===============================================================
 
 Problem statement
+-----------------
 
 DApp developpers maintainers and verifiers face the "endpoint hell" in Web, in chain and in out-chain code
 
 
 Summary of the solution to the problem
+---------------------------------------
 
 Express the entire program flow within a Haskell monad which set HTTP endpoints for microservices and uses Plutus endpoints
 
 
 The monad will execute as off-chain Haskell code. It will be a continuous `do` expression that will define HTTP endpoints and will use Cardano endpoints. The result is a clear specification of the entire process as a "workflow" which is clearly readable, maintainable and verifiable.
 
+Example
+-------
 
 At this moment, the file [pabtest.hs](https://github.com/agocorona/DAppFlow/blob/main/pabtest.hs) contains a very somple example of how a continuous workflow using the verbs `lock` and `guess` taken from standard plutus smart contracts examples could be integrated in a continuous workflow, using the plutus simulator:
 
