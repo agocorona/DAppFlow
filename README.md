@@ -38,11 +38,12 @@ main= keep $ initNode $  do
   locks= do
     (amo ::Int,word) <-  minput "lock" "enter lock amount and the key. Example: 100 myKey"
     ind <- localIO $ atomicModifyIORef rind $ \i -> (i+1,i+1)
-    local $ runPAB $ do
-      wallet <- local getState
-      cid  <- runPAB $ Simulator.activateContract (Wallet wallet) Lock
-      callEndpointOnInstance  cid "lock" LockParams{secretWord=BS.unpack word, amount= Ada.adaValueOf $ fromIntegral amo,lockIndex=ind}
-      return()
+    local $ do
+      wallet <- getState
+      runPAB $ do
+         cid  <- runPAB $ Simulator.activateContract (Wallet wallet) Lock
+         callEndpointOnInstance  cid "lock" LockParams{secretWord=BS.unpack word, amount= Ada.adaValueOf $ fromIntegral amo,lockIndex=ind}
+         return()
 
   guesses=do
     minput "guess" "guess a lock"  :: Cloud ()
@@ -50,12 +51,12 @@ main= keep $ initNode $  do
 
     if ind==0 then minput "" "no lock has been done yet. Do it yourself!" else do
       (index,guessw)  <- foldr (<|>) empty $ map (\i -> (,) <$> return i <*> minput ("g" <> show i) ("guess "++ show i)) [1..ind]
-      local $ runPAB $ do
-        wallet <- local getState
-        cid3 <-  Simulator.activateContract (Wallet wallet) Guess
-        callEndpointOnInstance  cid3 "guess" GuessParams{guessWord=guessw,guessIndex=index}
-
-        waitNSlots 3
+      local $ do
+        wallet <- getState
+        runPAB $ do
+            cid3 <-  Simulator.activateContract (Wallet wallet) Guess
+            callEndpointOnInstance  cid3 "guess" GuessParams{guessWord=guessw,guessIndex=index}
+            waitNSlots 3
   
   balances= do
     minput "bal" "display account balances" :: Cloud ()
