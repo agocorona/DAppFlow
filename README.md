@@ -19,14 +19,17 @@ The monad will execute as off-chain Haskell code. It will be a continuous `do` e
 Example
 -------
 
-At this moment, the file [pabtest.hs](https://github.com/agocorona/DAppFlow/blob/main/pabtest.hs) contains a very simple example of how a continuous workflow using the verbs `lock` and `guess` taken from standard plutus smart contracts examples could be integrated in a continuous workflow, using the plutus simulator:
+At this moment, the file [pabtest.hs](https://github.com/agocorona/DAppFlow/blob/main/pabtest.hs) contains a very simple example of how a continuous workflow using the verbs `lock` and `guess` taken from the basic example of contract [guessgame](https://github.com/input-output-hk/plutus-starter/blob/main/examples/src/Plutus/Contracts/Game.hs) slightly modified for allowing multiple locks could be integrated in a continuous workflow, using the plutus simulator:
 
 ```haskell
 main= keep $ initNode $  do
     local $ initPAB simulatorHandlers
 
     firstCont
-
+    
+    wallet <- minput "wallet" enter "your wallet id" 
+    local $ setState wallet
+    
     locks <|> guesses <|>  balances
 
   where
@@ -36,7 +39,8 @@ main= keep $ initNode $  do
     (amo ::Int,word) <-  minput "lock" "enter lock amount and the key. Example: 100 myKey"
     ind <- localIO $ atomicModifyIORef rind $ \i -> (i+1,i+1)
     local $ runPAB $ do
-      cid  <- runPAB $ Simulator.activateContract (Wallet 1) Lock
+      wallet <- local getState
+      cid  <- runPAB $ Simulator.activateContract (Wallet wallet) Lock
       callEndpointOnInstance  cid "lock" LockParams{secretWord=BS.unpack word, amount= Ada.adaValueOf $ fromIntegral amo,lockIndex=ind}
       return()
 
@@ -47,7 +51,8 @@ main= keep $ initNode $  do
     if ind==0 then minput "" "no lock has been done yet. Do it yourself!" else do
       (index,guessw)  <- foldr (<|>) empty $ map (\i -> (,) <$> return i <*> minput ("g" <> show i) ("guess "++ show i)) [1..ind]
       local $ runPAB $ do
-        cid3 <-  Simulator.activateContract (Wallet 3) Guess
+        wallet <- local getState
+        cid3 <-  Simulator.activateContract (Wallet wallet) Guess
         callEndpointOnInstance  cid3 "guess" GuessParams{guessWord=guessw,guessIndex=index}
 
         waitNSlots 3
@@ -61,7 +66,7 @@ main= keep $ initNode $  do
       return()
 ```
 
-In that example., some web/console endpoints (with `minput`) and in-chain plutus (with`callEndpointOnInstance`)  are invoqued. Since the "contract" in this case is trivial, with one step for each `lock` adn `guess`, it does not make evident the power of sequencing many interactions with the user and the on-chain code in the same monadic expression.
+In that example, some web/console endpoints (with `minput`) and in-chain plutus (with`callEndpointOnInstance`)  are invoqued. Since the "contract" in this case is trivial, with one step for each `lock` adn `guess`, it does not make evident the power of sequencing many interactions with the user and the on-chain code in the same monadic expression.
 
 DApps involving contracts take a long time to complete. The program support stop and recovery of the execution state at the step where it was when it was stopped.
 
