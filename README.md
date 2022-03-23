@@ -18,7 +18,7 @@ The monad will execute as off-chain Haskell code. It will be a continuous `do` e
 Example
 -------
 
-At this moment, the file [pabtest.hs](https://github.com/agocorona/DAppFlow/blob/main/pabtest.hs) contains a very somple example of how a continuous workflow using the verbs `lock` and `guess` taken from standard plutus smart contracts examples could be integrated in a continuous workflow, using the plutus simulator:
+At this moment, the file [pabtest.hs](https://github.com/agocorona/DAppFlow/blob/main/pabtest.hs) contains a very simple example of how a continuous workflow using the verbs `lock` and `guess` taken from standard plutus smart contracts examples could be integrated in a continuous workflow, using the plutus simulator:
 
 ```haskell
 main= keep $ initNode $  do
