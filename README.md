@@ -11,6 +11,7 @@ Summary of the solution to the problem
 ---------------------------------------
 
 Express the entire program flow within a Haskell monad which set HTTP endpoints for microservices and uses Plutus endpoints
+DApps involving contracts take a long time to complete. some intended or unintended shutdowns of the application may happen. The program support stop and recovery of the execution state at the step where it was when it was stopped. Also, individual Workflowa that are waiting can be freed from memory.
 
 
 The monad will execute as off-chain Haskell code. It will be a continuous `do` expression that will define HTTP endpoints and will use Cardano endpoints. The result is a clear specification of the entire process as a "workflow" which is clearly readable, maintainable and verifiable.
@@ -60,15 +61,10 @@ main= keep $ initNode $  do
       return()
 ```
 
-In that example web/console endpoints `minput` and in-chain plutus `callEndpointOnInstance`  are invoqued. Since the "contract" in this case are trivial, with one step for each `lock` adn `guess`, it is does not make evident the power of sequencing as many interactions with the user and the on-chain code in the same monadic expression.
+In that example., some web/console endpoints (with `minput`) and in-chain plutus (with`callEndpointOnInstance`)  are invoqued. Since the "contract" in this case is trivial, with one step for each `lock` adn `guess`, it does not make evident the power of sequencing many interactions with the user and the on-chain code in the same monadic expression.
 
 DApps involving contracts take a long time to complete. The program support stop and recovery of the execution state at the step where it was when it was stopped.
 
-
 The program can be executed as a console application or as a HTTP server, using a HTTP client. The commands option and input mean that the endpoint at line 37 need two parameters to continue executing, The program can get them from the request URL, from the console if they are provided in the command line or interactively. This would facilitate testing.
-
-
-Since it is Haskell code, optionally it can be used for any other kind of application, for example,a mobile app.
-
 
 Managed session state: Each endpoint has in scope all the variables computed in previous steps. The session state contains all these variables and will be stored in a file, in IPFS or in Cardano metadata. If the server for these particular endpoint is stopped, the execution state will be restored and the execution will continue.
