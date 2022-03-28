@@ -10,8 +10,8 @@ DApp developpers maintainers and verifiers face the "endpoint hell" in Web, in c
 Summary of the solution to the problem
 ---------------------------------------
 
-Express the entire program flow within a Haskell monad which set HTTP endpoints for microservices and uses Plutus endpoints
-DApps involving contracts take a long time to complete. some intended or unintended shutdowns of the application may happen. The program support stop and recovery of the execution state at the step where it was when it was stopped. Also, individual Workflowa that are waiting can be freed from memory.
+- Express the entire program flow within a Haskell monad which set HTTP endpoints for microservices and uses Plutus endpoints.
+- DApps involving contracts take a long time to complete. some intended or unintended shutdowns of the application may happen. The program support stop and recovery of the execution state at the step where it was when it was stopped. 
 
 
 The monad will execute as off-chain Haskell code. It will be a continuous `do` expression that will define HTTP endpoints and will use Cardano endpoints. The result is a clear specification of the entire process as a "workflow" which is clearly readable, maintainable and verifiable.
