@@ -114,37 +114,42 @@ main3 = Simulator.runSimulationWith handlers $ do
     $ interpret (contractHandler (Builtin.handleBuiltin @GuessGameContracts))
 
 
+locks = unsafePerformIO $ newIORef ([] :: [InputData])
 
 main= keep $ initNode $  do
     local $ initPAB simulatorHandlers
 
     firstCont
-
-    locks <|> guesses <|>  balances
+    
+    wallet <- minput "wallet" enter "your wallet id" 
+    local $ setState wallet
+    
+    gameSequence   <|> availableOptions <|>  balances
 
   where
 
-  rind= unsafePerformIO $ newIORef 0
-  locks= do
-    (amo ::Int,word) <-  minput "lock" "enter lock amount and the key. Example: 100 myKey"
-    ind <- localIO $ atomicModifyIORef rind $ \i -> (i+1,i+1)
-    local $ runPAB $ do
-      cid  <- runPAB $ Simulator.activateContract (Wallet 1) Lock
-      callEndpointOnInstance  cid "lock" LockParams{secretWord=BS.unpack word, amount= Ada.adaValueOf $ fromIntegral amo,lockIndex=ind}
-      return()
+  gameSequence = do
+    (amo ::Int,word, hint) <-  minput "lock" "enter lock amount, the key and a hint. Example: 100 myKey \"number between 0..1000\""
+    local $ do
+      wallet <- getState
+      runPAB $ do
+         cid  <- runPAB $ Simulator.activateContract (Wallet wallet) Lock
+         callEndpointOnInstance  cid "lock" LockParams{secretWord=BS.unpack word, amount= Ada.adaValueOf $ fromIntegral amo,lockIndex=ind}
+         return()
 
-  guesses=do
-    minput "guess" "guess a lock"  :: Cloud ()
-    ind <- localIO $ readIORef rind
+    minput "guess" ("guess a lock for " ++ hint) <|> addToOptions :: Cloud ()
+    
+    local $ do
+        wallet <- getState
+        runPAB $ do
+            cid3 <-  Simulator.activateContract (Wallet wallet) Guess
+            callEndpointOnInstance  cid3 "guess" GuessParams{guessWord=guessw,guessIndex=index}
+            waitNSlots 3
 
-    if ind==0 then minput "" "no lock has been done yet. Do it yourself!" else do
-      (index,guessw)  <- foldr (<|>) empty $ map (\i -> (,) <$> return i <*> minput ("g" <> show i) ("guess "++ show i)) [1..ind]
-      local $ runPAB $ do
-        cid3 <-  Simulator.activateContract (Wallet 3) Guess
-        callEndpointOnInstance  cid3 "guess" GuessParams{guessWord=guessw,guessIndex=index}
+  availableOptions = local $ do
+      inputdatas <- liftIO $ readIORef locks -- `onNothing`  return [] -- do minput "" "no lock has been done yet. Do it yourself!"  ; empty
+      foldr (<|>) empty $ map (\(InputData msg url) -> sendURL msg url) inputdatas
 
-        waitNSlots 3
-  
   balances= do
     minput "bal" "display account balances" :: Cloud ()
     local $ runPAB $ do
@@ -153,7 +158,11 @@ main= keep $ initNode $  do
       Simulator.logBalances @(Builtin GuessGameContracts) b
       return()
 
-
+  addToOptions :: Loggable a => Cloud a
+  addToOptions=  local $ do
+        idata <- getState
+        liftIO $ atomicModifyIORef' locks (\idatas -> (idata:idatas,())) 
+        empty
 
 simulatorHandlers :: EffectHandlers (Builtin GuessGameContracts) (SimulatorState (Builtin GuessGameContracts))
 simulatorHandlers = mkSimulatorHandlers def def handler
