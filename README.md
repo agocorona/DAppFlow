@@ -116,7 +116,7 @@ main= keep $ initNode $  do
             callEndpointOnInstance  cid "guess" GuessParams{guessWord=guessw,guessIndex=ind}
             waitNSlots 3
             
-    minput ""  (if word== guess then "YES" else "NO" :: Cloud ())
+    minput ""  (if word== guessw then "YES" else "NO" :: Cloud ())
 
   availableOptions = local $ do
       inputdatas <- liftIO $ readIORef locks -- `onNothing`  return [] 
@@ -151,7 +151,7 @@ So we have a multinuser workflow in which one user locks and every other can gue
 
 Naturally,  by changing `addtoOptions` you can program more personalized options.
 
-Note that we don´t have to store the identifiers `ind` of the games in a off-chain list, since they are local variables in the monad. In general, there is no need to manage database objects with the exception of the links, which allows entering at some step of the workflow. The rest of the off-chain data is managed as local variables. This simplifies the development a lot. Since such variables that determine the execution state can be stored in IPFS
+Note that we don´t have to store the identifiers `ind` of the game, the word to gues etc in a off-chain session state, since they are local variables in the monad. In general, there is no need to manage database objects with the exception of the links, which allows entering at some step of the workflow. The rest of the off-chain data is managed as local variables. This simplifies the development a lot. Since such variables that determine the execution state can be stored in IPFS
 
 Also, in guess, now there a two wallets involved the one of the locker and the one of the guesser. the first can be retrived with `getState`; the second with `getCallerState` since that gives the state of the last one who entered in the `gameSequence` flow.
 
