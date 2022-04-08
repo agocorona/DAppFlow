@@ -77,6 +77,9 @@ The program can be executed as a console application or as a HTTP server, using 
 
 Managed session state: Each endpoint has in scope all the variables computed in previous steps. The session state contains all these variables and will be stored in a file, in IPFS or in Cardano metadata. If the server for these particular endpoint is stopped, the execution state will be restored and the execution will continue.
 
+A better way
+------------
+
 Now, lets write the game in a more sequential way. A person would describe the game as "first someone lock some amount and a key, then  any other could guess that key and receive the money. That sequentiality is expressend in  `gameSequence` below where `lock` and `guess` are.. humm.., in sequence:
 
 ```haskell
