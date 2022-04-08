@@ -179,15 +179,15 @@ curl 'http://localhost:8000/2/20002000/0/0/1'
 # curl 'http://localhost:8000/7/40002000/0/0/100/42/"number between 0..1000"'
 [{ "msg"="guess number between 0..1000", "url"="http://localhost:8000/17/70002000/0/0/$int"}]
 ```
-Enter another user:
+Enter another wallet number
 
 ```
-curl 'http://localhost:8000/2/20002000/0/0/"juan"/'
+curl 'http://localhost:8000/2/20002000/0/0/1/2/'
 [{ "msg"="enter a lock number", "url"="http://localhost:8000/19/40002000/0/0/$int"}
 ,{ "msg"=""guess number between 0..1000", "cont"=http://localhost:8000/17/70002000/0/0/$int}]
 ```
 
-(now "juan", besided starting a new game, has received one more option above: to guess the number entered by "pepe"
+Now "juan", besided starting a new game, has received one more option above: to guess the number entered by the first wallet. $int means a number which is the key entered previously (42).
 
 ```
 # curl 'http://localhost:8000/9/70002000/0/0/42/'
