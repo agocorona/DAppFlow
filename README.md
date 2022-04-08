@@ -86,7 +86,7 @@ Now, lets write the game in a more sequential way. A person would describe the g
 main= keep $ initNode $  do
     local $ initPAB simulatorHandlers
     
-    wallet <- minput "wallet" enter "your wallet id" 
+    wallet <- minput "wallet" "enter your wallet number" 
     cid <-  Simulator.activateContract (Wallet wallet) Guess
 
     local $ setState wallet
@@ -164,33 +164,40 @@ hostname of this node. (Must be reachable, default:localhost)? "localhost"
 if you want to retry with port+1 when the port is busy, write 'retry': 
 port to listen? 8000
 Connected to port: "8000"
-Enter  id               to: enter your id       url:    http://localhost:8000/2/20002000/0/0/$string
+Enter  id               to: enter your wallet number       url:    http://localhost:8000/2/20002000/0/0/1/$int
+
+```
+In another console:
 
 ```
 
-Other console
-```
-#curl 'http://localhost:8000/2/20002000/0/0/1/'
-[{ "msg"="enter a wallet number", "url"="http://localhost:8000/15/40002000/0/0/$int"}]
 
 curl 'http://localhost:8000/2/20002000/0/0/1'
-[{ "msg"=enter lock amount, the key and a hint. Example: 100/myKey/\"number between 0..1000\"", "url"="http://localhost:8000/23/40002000/0/0/$int/$int/String"}
+[{ "msg"=enter lock amount, the key and a hint. Example: 100/myKey/\"number between 0..1000\""
+, "url"="http://localhost:8000/23/40002000/0/0/$int/$int/String"}
 
 # curl 'http://localhost:8000/7/40002000/0/0/100/42/"number between 0..1000"'
 [{ "msg"="guess number between 0..1000", "url"="http://localhost:8000/17/70002000/0/0/$int"}]
 ```
+Enter another user:
 
 ```
 curl 'http://localhost:8000/2/20002000/0/0/"juan"/'
 [{ "msg"="enter a lock number", "url"="http://localhost:8000/19/40002000/0/0/$int"}
 ,{ "msg"=""guess number between 0..1000", "cont"=http://localhost:8000/17/70002000/0/0/$int}]
+```
 
+(now "juan", besided starting a new game, has received one more option above: to guess the number entered by "pepe"
 
+```
 # curl 'http://localhost:8000/9/70002000/0/0/42/'
 [{ "msg"="YES", "url"="http://localhost:8000/21/110002000/0/0/"}]
 
 ```
+He entered 42 and yes that was the number. The on-chain code will reflect it in the balances.
 
+The on-chain code is not shown here, but it is identical of the one of the  plutus canonical game example with the addition 
+of a index to allow differnt games at the same time. see [guessGameIndexed.hs](https://github.com/agocorona/DAppFlow/blob/main/ContractExample/GuessGameIndexed.hs) and compare it with [guessGame.hs](https://github.com/agocorona/DAppFlow/blob/main/ContractExample/GuessGame.hs)
 
 **Status**
 
