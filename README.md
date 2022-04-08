@@ -112,7 +112,7 @@ main= keep $ initNode $  do
         
         wallet <- getCallerState
         runPAB $ do
-            cid  <- runPAB $ Simulator.activateContract (Wallet wallet) Lock
+            cid  <- runPAB $ Simulator.activateContract (Wallet wallet) Guess
             callEndpointOnInstance  cid "guess" GuessParams{guessWord=guessw,guessIndex=ind}
             waitNSlots 3
             
