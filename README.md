@@ -197,9 +197,10 @@ curl 'http://localhost:8000/2/20002000/0/0/"juan"/'
 He entered 42 and yes that was the number. The on-chain code will reflect it in the balances.
 
 The on-chain code is not shown here, but it is identical of the one of the  plutus canonical game example with the addition 
-of a index to allow differnt games at the same time. see [guessGameIndexed.hs](https://github.com/agocorona/DAppFlow/blob/main/ContractExample/GuessGameIndexed.hs) and compare it with [guessGame.hs](https://github.com/agocorona/DAppFlow/blob/main/ContractExample/GuessGame.hs)
+of a index to allow differnt games at the same time. See [guessGameIndexed.hs](https://github.com/agocorona/DAppFlow/blob/main/ContractExample/GuessGameIndexed.hs) and compare it with [guessGame.hs](https://github.com/agocorona/DAppFlow/blob/main/ContractExample/GuessGame.hs)
 
-**Status**
+Status
+======
 
 Currently this is under development ad I can not write a recipe for easy compilationand excecution of the examples
 
