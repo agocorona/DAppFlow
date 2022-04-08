@@ -21,7 +21,7 @@ Example
 
 At this moment, the file [pabtest.hs](https://github.com/agocorona/DAppFlow/blob/main/pabtest.hs) contains a very simple example of how a continuous workflow using the verbs `lock` and `guess` taken from the basic example of contract [guessgame](https://github.com/input-output-hk/plutus-starter/blob/main/examples/src/Plutus/Contracts/Game.hs) slightly modified for allowing multiple locks could be integrated in a continuous workflow, using the plutus simulator:
 
-*NOTE*  A more sequential version of this same game is being developed that shows better the advantafes of a multiuser workflow expressed in a single monadic (imperative) expression.
+*NOTE*  A more sequential version of this same game is in the second snippet that shows better the advantafes of a multiuser workflow expressed in a single monadic (imperative-like) expression.
 
 ```haskell
 main= keep $ initNode $  do
@@ -76,3 +76,122 @@ DApps involving contracts take a long time to complete. The program support stop
 The program can be executed as a console application or as a HTTP server, using a HTTP client. The commands option and input mean that the endpoint at line 37 need two parameters to continue executing, The program can get them from the request URL, from the console if they are provided in the command line or interactively. This would facilitate testing.
 
 Managed session state: Each endpoint has in scope all the variables computed in previous steps. The session state contains all these variables and will be stored in a file, in IPFS or in Cardano metadata. If the server for these particular endpoint is stopped, the execution state will be restored and the execution will continue.
+
+Now, lets write the game in a more sequential way. A person would describe the game as "first someone lock some amount and a key, then  any other could guess that key and receive the money. That sequentiality is expressend in  `gameSequence` below where `lock` and `guess` are.. humm.., in sequence:
+
+```haskell
+main= keep $ initNode $  do
+    local $ initPAB simulatorHandlers
+    
+    wallet <- minput "wallet" enter "your wallet id" 
+    cid <-  Simulator.activateContract (Wallet wallet) Guess
+
+    local $ setState wallet
+    
+    gameSequence   <|> availableOptions <|>  balances
+
+  where
+
+  gameSequence = do
+    (amo ::Int,word, hint) <-  minput "lock" "enter lock amount, the key and a hint. Example: 100 myKey \"number between 0..1000\""
+    ind <- local $ do
+      wallet <- getState
+      ind <- runPAB $ do
+         cid  <- runPAB $ Simulator.activateContract (Wallet wallet) Lock
+         ind <- localIO $ atomicModifyIORef rind $ \i -> (i+1,i+1)
+
+         callEndpointOnInstance  cid "lock" LockParams{secretWord=BS.unpack word, amount= Ada.adaValueOf $ fromIntegral amo,lockIndex=ind}
+         return ind
+
+    guessw <- minput "guess" ("guess " ++ hint) <|> addToOptions 
+    
+    local $ do
+        
+        wallet <- getCallerState
+        runPAB $ do
+            cid  <- runPAB $ Simulator.activateContract (Wallet wallet) Lock
+            callEndpointOnInstance  cid "guess" GuessParams{guessWord=guessw,guessIndex=ind}
+            waitNSlots 3
+            
+    minput ""  (if word== guess then "YES" else "NO" :: Cloud ())
+
+  availableOptions = local $ do
+      inputdatas <- liftIO $ readIORef locks -- `onNothing`  return [] 
+      foldr (<|>) empty $ map (\(InputData msg url) -> sendURL msg url) inputdatas
+      
+  addToOptions :: Loggable a => Cloud a
+  addToOptions=  local $ do
+        idata <- getState <|> error "No inputData. minput has not been used"
+        liftIO $ atomicModifyIORef' locks (\idatas -> (idata:idatas,())) 
+        empty
+        
+  balances= do
+    minput "bal" "display account balances" :: Cloud ()
+    local $ runPAB $ do
+      Simulator.logString @(Builtin  GuessGameContracts) "Balances at the end of the simulation"
+      b <-  Simulator.currentBalances
+      Simulator.logBalances @(Builtin GuessGameContracts) b
+      return()
+```
+
+After locking a number, the same user can guess his own lock. That is nice but it is not a multiuser workflow where any other user can guees the other's lock. That is the role of `addToOptions`  and `availableOptions` which add the guess link to a list and exposes all the guess links to other users who enter in the application.  The list is in a globla IORef (TBD: make this persistent!!!) wich contains  `InputData msg url` elements. `InputData` is created and stored in the state by minput.
+
+this line...
+
+```haskell
+ guessw <- minput "guess" ("guess a lock for " ++ hint) <|> addToOptions 
+```
+
+..means: show a guess link to the user that sent the lock, but at the same time before that user respond, add this guess link to the options that every other user get once he enter his wallet.
+
+So we have a multinuser workflow in which one user locks and every other can guess. 
+
+Naturally,  by changing `addtoOptions` you can program more personalized options.
+
+Note that we don´t have to store the identifiers `ind` of the games in a off-chain list, since they are local variables in the monad. In general, there is no need to manage database objects with the exception of the links, which allows entering at some step of the workflow. The rest of the off-chain data is managed as local variables. This simplifies the development a lot. Since such variables that determine the execution state can be stored in IPFS
+
+Also, in guess, now there a two wallets involved the one of the locker and the one of the guesser. the first can be retrived with `getState`; the second with `getCallerState` since that gives the state of the last one who entered in the `gameSequence` flow.
+
+
+An example interaction of this second snippet is:
+
+```
+option: start
+hostname of this node. (Must be reachable, default:localhost)? "localhost"
+if you want to retry with port+1 when the port is busy, write 'retry': 
+port to listen? 8000
+Connected to port: "8000"
+Enter  id               to: enter your id       url:    http://localhost:8000/2/20002000/0/0/$string
+
+```
+
+Other console
+```
+#curl 'http://localhost:8000/2/20002000/0/0/1/'
+[{ "msg"="enter a wallet number", "url"="http://localhost:8000/15/40002000/0/0/$int"}]
+
+curl 'http://localhost:8000/2/20002000/0/0/1'
+[{ "msg"=enter lock amount, the key and a hint. Example: 100/myKey/\"number between 0..1000\"", "url"="http://localhost:8000/23/40002000/0/0/$int/$int/String"}
+
+# curl 'http://localhost:8000/7/40002000/0/0/100/42/"number between 0..1000"'
+[{ "msg"="guess number between 0..1000", "url"="http://localhost:8000/17/70002000/0/0/$int"}]
+```
+
+```
+curl 'http://localhost:8000/2/20002000/0/0/"juan"/'
+[{ "msg"="enter a lock number", "url"="http://localhost:8000/19/40002000/0/0/$int"}
+,{ "msg"=""guess number between 0..1000", "cont"=http://localhost:8000/17/70002000/0/0/$int}]
+
+
+# curl 'http://localhost:8000/9/70002000/0/0/42/'
+[{ "msg"="YES", "url"="http://localhost:8000/21/110002000/0/0/"}]
+
+```
+
+
+**Status**
+
+Currently this is under development ad I can not write a recipe for easy compilationand excecution of the examples
+
+
+
