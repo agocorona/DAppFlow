@@ -21,7 +21,7 @@ Example
 
 At this moment, the file [pabtest.hs](https://github.com/agocorona/DAppFlow/blob/main/pabtest.hs) contains a very simple example of how a continuous workflow using the verbs `lock` and `guess` taken from the basic example of contract [guessgame](https://github.com/input-output-hk/plutus-starter/blob/main/examples/src/Plutus/Contracts/Game.hs) slightly modified for allowing multiple locks could be integrated in a continuous workflow, using the plutus simulator:
 
-*NOTE*  A more sequential version of this same game is in the second snippet that shows better the advantafes of a multiuser workflow expressed in a single monadic (imperative-like) expression.
+*NOTE*  A more sequential version of this same game is in the second snippet that shows better the advantages of a multiuser workflow expressed in a single monadic (imperative-like) expression.
 
 ```haskell
 main= keep $ initNode $  do
