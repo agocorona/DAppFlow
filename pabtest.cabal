@@ -19,6 +19,7 @@ executable        pabtest
                      , playground-common
                      , plutus-contract
                      , plutus-ledger
+                     , plutus-ledger-constraints
                      , plutus-tx-plugin
                      , plutus-tx
                      , plutus-pab

@@ -14,6 +14,9 @@
 {-# LANGUAGE TypeFamilies               #-}
 {-# LANGUAGE TypeOperators              #-}
 {-# LANGUAGE StandaloneDeriving              #-}
+{-# LANGUAGE ImportQualifiedPost              #-}
+
+
 
 {-# OPTIONS_GHC -fno-ignore-interface-pragmas #-}
 
@@ -26,21 +29,22 @@ module ContractExample.GuessGameIndexed where
 -- Player 2 guesses the word by attempting to spend the transaction
 -- output. If the guess is correct, the validator script releases the funds.
 -- If it isn't, the funds stay locked.
-import           Control.Monad         (void)
-import qualified Data.ByteString.Char8 as C
-import qualified Data.Map              as Map
-import           Data.Maybe            (catMaybes)
-import           Ledger                (Address, Datum (Datum), ScriptContext, TxOutTx, Validator, Value)
-import qualified Ledger
-import qualified Ledger.Ada            as Ada
-import qualified Ledger.Constraints    as Constraints
-import qualified Ledger.Typed.Scripts  as Scripts
-import           Playground.Contract
-import           Plutus.Contract
-import qualified PlutusTx
-import           PlutusTx.Prelude      hiding (pure, (<$>))
-import qualified Prelude               as Haskell
-
+import Control.Monad (void)
+import Data.ByteString.Char8 qualified as C
+import Data.Map (Map)
+import Data.Map qualified as Map
+import Data.Maybe (catMaybes)
+import Ledger (Address, Datum (Datum), ScriptContext, Validator, Value)
+import Ledger qualified
+import Ledger.Ada qualified as Ada
+import Ledger.Constraints qualified as Constraints
+import Ledger.Tx (ChainIndexTxOut (..))
+import Ledger.Typed.Scripts qualified as Scripts
+import Playground.Contract
+import Plutus.Contract
+import PlutusTx qualified
+import PlutusTx.Prelude hiding (pure, (<$>))
+import Prelude qualified as Haskell
 
 ------------------------------------------------------------
 
@@ -103,9 +107,6 @@ data LockParams = LockParams
     deriving stock (Haskell.Eq, Haskell.Show, Generic)
     deriving anyclass (FromJSON, ToJSON, ToSchema, ToArgument)
 
-
-
-
 --  | Parameters for the "guess" endpoint
 data GuessParams = GuessParams
     { guessWord :: Haskell.String
@@ -120,14 +121,12 @@ lock = endpoint @"lock" @LockParams $ \(LockParams secret amt ind) -> do
     logInfo @Haskell.String $ "Pay " <> Haskell.show amt <> " to the script"
     let tx         = Constraints.mustPayToTheScript (hashString secret) amt
     void (submitTxConstraints (gameInstance ind) tx)
-    
 
 -- | The "guess" contract endpoint. See note [Contract endpoints]
 guess :: AsContractError e => Promise () GameSchema e ()
 guess = endpoint @"guess" @GuessParams $ \(GuessParams theGuess cid) -> do
     -- Wait for script to have a UTxO of a least 1 lovelace
     logInfo @Haskell.String "Waiting for script to have a UTxO of at least 1 lovelace"
-
     utxos <- fundsAtAddressGeq   (gameAddress cid) (Ada.lovelaceValueOf 1)
 
     let redeemer = clearString theGuess
@@ -144,27 +143,23 @@ guess = endpoint @"guess" @GuessParams $ \(GuessParams theGuess cid) -> do
     -- In a real use-case, we would not submit the transaction if the guess is
     -- wrong.
     logInfo @Haskell.String "Submitting transaction to guess the secret word"
-
     void (submitTxConstraintsSpending (gameInstance cid) utxos tx)
-    
 
 -- | Find the secret word in the Datum of the UTxOs
-findSecretWordValue :: UtxoMap -> Maybe HashedString
+findSecretWordValue :: Map TxOutRef ChainIndexTxOut -> Maybe HashedString
 findSecretWordValue =
   listToMaybe . catMaybes . Map.elems . Map.map secretWordValue
 
 -- | Extract the secret word in the Datum of a given transaction output is possible
-secretWordValue :: TxOutTx -> Maybe HashedString
+secretWordValue :: ChainIndexTxOut -> Maybe HashedString
 secretWordValue o = do
-  dh <- Ledger.txOutDatum $ Ledger.txOutTxOut o
-  Datum d <- Map.lookup dh $ Ledger.txData $ Ledger.txOutTxTx o
+  Datum d <- either (const Nothing) Just (_ciTxOutDatum o)
   PlutusTx.fromBuiltinData d
 
 game :: AsContractError e => Contract () GameSchema e ()
 game = do
     logInfo @Haskell.String "Waiting for guess or lock endpoint..."
     selectList [lock, guess]
-    
 
 {- Note [Contract endpoints]
 

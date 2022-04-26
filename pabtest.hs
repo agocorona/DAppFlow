@@ -15,6 +15,7 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 
 import ContractExample.GuessGameIndexed
@@ -24,7 +25,7 @@ import qualified Control.Monad.Freer.Error as Error
 import Control.Monad.Freer.Reader hiding (local)
 import Control.Monad.IO.Class
 import Control.Monad
-import Data.Aeson (FromJSON, ToJSON)
+import Data.Aeson -- (FromJSON, ToJSON)
 import Data.Default (Default (def))
 import Data.IORef
 -- (Builtin, BuiltinHandler, contractHandler, handleBuiltin)
@@ -44,6 +45,7 @@ import Plutus.PAB.Effects.Contract.Builtin
 import qualified Plutus.PAB.Effects.Contract.Builtin as Builtin
 import Plutus.PAB.Effects.TimeEffect (TimeEffect (..))
 import Plutus.PAB.Simulator as Simulator
+
   ( SimulatorContractHandler,
   logBalances,
   currentBalances,
@@ -57,6 +59,8 @@ import Plutus.PAB.Simulator as Simulator
     mkSimulatorHandlers,
     waitNSlots
   )
+import Wallet.Emulator.Types (knownWallet)
+
 import Plutus.PAB.Types (PABError)
 import Schema (FormSchema)
 import System.IO.Unsafe
@@ -67,8 +71,10 @@ import qualified Data.List as Ada
 import Transient.Internals
 import Transient.Move.Internals
 import Transient.Move.Utils
+import Transient.Logged
 import Control.Applicative
 import Data.ByteString.Lazy.Char8 as BS (unpack)
+import Data.Typeable
 
 type PABC contract a = Eff (PABEffects (Builtin contract) (Simulator.SimulatorState (Builtin contract))) a
 
@@ -83,10 +89,10 @@ runPAB =  liftIO . runPABC
 
 main3 = Simulator.runSimulationWith handlers $ do
 
-     cid  <- Simulator.activateContract (Wallet 1) Lock
-     cid2 <- Simulator.activateContract (Wallet 2) Lock
-     cid3 <- Simulator.activateContract (Wallet 3) Guess
-     cid4 <- Simulator.activateContract (Wallet 4) Guess
+     cid  <- Simulator.activateContract (knownWallet 1) Lock
+     cid2 <- Simulator.activateContract (knownWallet 2) Lock
+     cid3 <- Simulator.activateContract (knownWallet 3) Guess
+     cid4 <- Simulator.activateContract (knownWallet 4) Guess
 
 
      waitNSlots 3
@@ -115,10 +121,9 @@ main3 = Simulator.runSimulationWith handlers $ do
 
 
 
-main= keep $ initNode $  do
+mainnoseq= keep $ initNode $  do
     local $ initPAB simulatorHandlers
 
-    firstCont
 
     locks <|> guesses <|>  balances
 
@@ -129,8 +134,8 @@ main= keep $ initNode $  do
     (amo ::Int,word) <-  minput "lock" "enter lock amount and the key. Example: 100 myKey"
     ind <- localIO $ atomicModifyIORef rind $ \i -> (i+1,i+1)
     local $ runPAB $ do
-      cid  <- runPAB $ Simulator.activateContract (Wallet 1) Lock
-      callEndpointOnInstance  cid "lock" LockParams{secretWord=BS.unpack word, amount= Ada.adaValueOf $ fromIntegral amo,lockIndex=ind}
+      cid  <- runPAB $ Simulator.activateContract ( knownWallet 1) Lock
+      callEndpointOnInstance  cid "lock" LockParams{secretWord= word, amount= Ada.adaValueOf $ fromIntegral amo,lockIndex=ind}
       return()
 
   guesses=do
@@ -140,7 +145,7 @@ main= keep $ initNode $  do
     if ind==0 then minput "" "no lock has been done yet. Do it yourself!" else do
       (index,guessw)  <- foldr (<|>) empty $ map (\i -> (,) <$> return i <*> minput ("g" <> show i) ("guess "++ show i)) [1..ind]
       local $ runPAB $ do
-        cid3 <-  Simulator.activateContract (Wallet 3) Guess
+        cid3 <-  Simulator.activateContract (knownWallet 3) Guess
         callEndpointOnInstance  cid3 "guess" GuessParams{guessWord=guessw,guessIndex=index}
 
         waitNSlots 3
@@ -153,6 +158,71 @@ main= keep $ initNode $  do
       Simulator.logBalances @(Builtin GuessGameContracts) b
       return()
 
+instance {-# Overlappable #-} ToJSON a=> Show a where
+  show = BS.unpack . toLazyByteString . serializetoJSON . toJSON
+
+instance FromJSON a => Read a where
+  readsPrec _ _= error "not implemented read for FromJSON class"
+
+instance {-# Overlappable #-} (Typeable a,ToJSON a, FromJSON a) => Loggable a where
+   serialize= serializetoJSON
+   deserialize =deserializeJSON
+
+main= keep $ initNode $  do
+    local $ initPAB simulatorHandlers
+    
+    wallet <- minput "wallet" "enter your wallet number" 
+    cid <-  local $ runPAB $ Simulator.activateContract (knownWallet wallet) Guess
+
+    local $ setState wallet
+    
+    gameSequence   <|> availableOptions <|>  balances
+
+  where
+  rind= unsafePerformIO $ newIORef 0
+
+  gameSequence = do
+    (amo ::Int,word, hint) <-  minput "lock" "enter lock amount, the key and a hint. Example: 100 myKey \"number between 0..1000\""
+    ind <- local $ do
+      wallet <- getState
+      ind <- liftIO $ atomicModifyIORef rind $ \i -> (i+1,i+1)
+
+      runPAB $ do
+              cid  <- runPAB $ Simulator.activateContract (Wallet wallet) Lock
+              callEndpointOnInstance  cid "lock" LockParams{secretWord=word, amount= Ada.adaValueOf $ fromIntegral amo,lockIndex=ind}
+      return ind
+
+    guessw <- minput "guess" ("guess " <> hint) <|> addToOptions 
+    
+    local $ do
+        
+        wallet <- getSessionState
+        runPAB $ do
+            cid  <- runPAB $ Simulator.activateContract (Wallet wallet) Guess
+            callEndpointOnInstance  cid "guess" GuessParams{guessWord=guessw,guessIndex=ind}
+            waitNSlots 3
+            
+    minput ""  (if word== guessw then "YES" else "NO") 
+
+  availableOptions =  do
+      inputdatas <-  local getRState 
+      local $ foldr (<|>) empty $ map (\(InputData id msg url) -> sendOption msg url) inputdatas
+      
+  addToOptions :: Loggable a => Cloud a
+  addToOptions=  do
+        idata :: InputData  <- local getState 
+        lcks :: [InputData] <- local getRState 
+        local $ setRState $ idata:lcks 
+        empty
+
+        
+  balances= do
+    minput "bal" "display account balances" :: Cloud ()
+    local $ runPAB $ do
+      Simulator.logString @(Builtin  GuessGameContracts) "Balances at the end of the simulation"
+      b <-  Simulator.currentBalances
+      Simulator.logBalances @(Builtin GuessGameContracts) b
+      return()
 
 
 simulatorHandlers :: EffectHandlers (Builtin GuessGameContracts) (SimulatorState (Builtin GuessGameContracts))

@@ -1,9 +1,20 @@
 packages: ../transient-stack/transient 
           ../transient-stack/transient-universe
+          ../plutus-apps/freer-extras
+          ../plutus-apps/playground-common
+          ../plutus-apps/plutus-chain-index
+          ../plutus-apps/plutus-chain-index-core
+          ../plutus-apps/plutus-contract
+          ../plutus-apps/plutus-ledger
+          ../plutus-apps/plutus-ledger-constraints
+          ../plutus-apps/plutus-pab
+          ../plutus-apps/plutus-pab-executables
+          ../plutus-apps/plutus-playground-server
+          ../plutus-apps/plutus-use-cases
+          ../plutus-apps/quickcheck-dynamic
+          ../plutus-apps/web-ghc
           pabtest.cabal
 
--- Bump this if you need newer packages
-index-state: 2021-10-20T00:00:00Z
 
 
 
@@ -244,21 +255,3 @@ source-repository-package
    plutus-tx
    plutus-tx-plugin
 
-
-source-repository-package
- type: git
- location: https://github.com/agocorona/plutus-apps 
- subdir:  doc
-          freer-extras
-          playground-common
-          plutus-chain-index
-          plutus-chain-index-core
-          plutus-contract
-          plutus-ledger
-          plutus-ledger-constraints
-          plutus-pab
-          plutus-pab-executables
-          plutus-playground-server
-          plutus-use-cases
-          quickcheck-dynamic
-          web-ghc
