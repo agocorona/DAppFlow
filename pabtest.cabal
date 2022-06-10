@@ -8,6 +8,45 @@ Copyright:           © 2021 Lars Bruenjes
 License:             Apache-2.0
 License-files:       LICENSE
 
+executable        pabtestnet
+  main-is:            pabtestnet.hs
+  other-modules:      ContractExample.GuessGame, Wallet
+  hs-source-dirs:     .
+  build-depends:       aeson
+                     , bytestring
+                     , base ^>=4.14.1.0
+                     , containers
+                     , playground-common
+                     , plutus-contract
+                     , plutus-ledger
+                     , plutus-ledger-constraints
+                     , plutus-tx-plugin
+                     , plutus-tx
+                     , plutus-pab
+                     , plutus-chain-index-core
+                     , cardano-wallet-core
+                     , iohk-monitoring
+                     , text
+                     , ghc-boot-th
+                     , optparse-applicative
+                     , aeson-pretty
+                     , freer-simple
+                     , freer-extras
+                     , data-default
+                     , stm
+                     , prettyprinter
+                     , plutus-ledger-api
+                     , plutus-use-cases
+                     , uuid
+                     , transient
+                     , transient-universe
+                     , yaml
+                     , mtl
+
+  default-language:    Haskell2010
+  ghc-options:         -Wall -fobject-code -fno-ignore-interface-pragmas -fno-omit-interface-pragmas -fno-strictness -fno-spec-constr -fno-specialise
+
+
 executable        pabtest
   main-is:            pabtest.hs
   other-modules:      ContractExample.GuessGameIndexed
@@ -37,10 +76,8 @@ executable        pabtest
                      , uuid
                      , transient
                      , transient-universe
-
-                     
-                     
-         
-                     
   default-language:    Haskell2010
   ghc-options:         -Wall -fobject-code -fno-ignore-interface-pragmas -fno-omit-interface-pragmas -fno-strictness -fno-spec-constr -fno-specialise
+
+
+  

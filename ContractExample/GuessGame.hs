@@ -32,6 +32,8 @@ import           Ledger                (Address, Datum (Datum), ScriptContext, T
 import qualified Ledger
 import qualified Ledger.Ada            as Ada
 import qualified Ledger.Constraints    as Constraints
+import           Ledger.Tx (ChainIndexTxOut (..),getCardanoTxId)
+
 import qualified Ledger.Typed.Scripts  as Scripts
 import           Playground.Contract
 import           Plutus.Contract
@@ -109,7 +111,11 @@ lock :: AsContractError e => Promise () GameSchema e ()
 lock = endpoint @"lock" @LockParams $ \(LockParams secret amt) -> do
     logInfo @Haskell.String $ "Pay " <> Haskell.show amt <> " to the script"
     let tx         = Constraints.mustPayToTheScript (hashString secret) amt
-    void (submitTxConstraints gameInstance tx)
+    logInfo @Haskell.String "SUBMITTING"
+    ledgerTx <- submitTxConstraints gameInstance tx
+    logInfo @Haskell.String $ "TRANSACTION=" <>  Haskell.show ledgerTx
+    -- void $ awaitTxConfirmed $ getCardanoTxId ledgerTx
+    -- logInfo @Haskell.String $ "Paid " 
 
 -- | The "guess" contract endpoint. See note [Contract endpoints]
 guess :: AsContractError e => Promise () GameSchema e ()
@@ -135,15 +141,14 @@ guess = endpoint @"guess" @GuessParams $ \(GuessParams theGuess) -> do
     void (submitTxConstraintsSpending gameInstance utxos tx)
 
 -- | Find the secret word in the Datum of the UTxOs
-findSecretWordValue :: UtxoMap -> Maybe HashedString
+findSecretWordValue :: Map.Map TxOutRef ChainIndexTxOut -> Maybe HashedString -- UtxoMap -> Maybe HashedString
 findSecretWordValue =
   listToMaybe . catMaybes . Map.elems . Map.map secretWordValue
 
 -- | Extract the secret word in the Datum of a given transaction output is possible
-secretWordValue :: TxOutTx -> Maybe HashedString
+secretWordValue :: ChainIndexTxOut -> Maybe HashedString
 secretWordValue o = do
-  dh <- Ledger.txOutDatum $ Ledger.txOutTxOut o
-  Datum d <- Map.lookup dh $ Ledger.txData $ Ledger.txOutTxTx o
+  Datum d <- either (const Nothing) Just (_ciTxOutDatum o)
   PlutusTx.fromBuiltinData d
 
 game :: AsContractError e => Contract () GameSchema e ()
