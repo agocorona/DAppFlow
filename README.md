@@ -83,77 +83,75 @@ A better way
 Now, lets write the game in a more sequential way. A person would describe the game as "first someone lock some amount and a key, then  any other could guess that key and receive the money. That sequentiality is expressend in  `gameSequence` below where `lock` and `guess` are.. humm.., in sequence:
 
 ```haskell
-main= keep $ initNode $  do
-    local $ initPAB simulatorHandlers
-    
-    wallet <- minput "wallet" "enter your wallet number" 
-    cid <-  Simulator.activateContract (Wallet wallet) Guess
+main = keep $
+  initNode $ do
+    initHandlers
 
-    local $ setState wallet
-    
-    gameSequence   <|> availableOptions <|>  balances
+    getWallet
+
+    gameSequence <|> published "guess" <|> balances 
+    return ()
 
   where
+    getWallet = do
+      POSTData (wallet :: WalletId) <- minput "wallet" ("enter your wallet number" :: String)
+      localIO $ print ("WALLET", wallet)
+      local $ setSessionState $ Wallet wallet
 
-  gameSequence = do
-    (amo ::Int,word, hint) <-  minput "lock" "enter lock amount, the key and a hint. Example: 100 myKey \"number between 0..1000\""
-    ind <- local $ do
-      wallet <- getState
-      ind <- runPAB $ do
-         cid  <- runPAB $ Simulator.activateContract (Wallet wallet) Lock
-         ind <- localIO $ atomicModifyIORef rind $ \i -> (i+1,i+1)
+    gameSequence = do
+      POSTData (amo :: Int, word :: String, hint :: String) <- minput "lock" ("enter lock amount, the key and a hint. Example: 100 myKey \"word of 5 letters\"" :: String)
+      cid <- pabLock amo word
 
-         callEndpointOnInstance  cid "lock" LockParams{secretWord=BS.unpack word, amount= Ada.adaValueOf $ fromIntegral amo,lockIndex=ind}
-         return ind
+      i <- local genPersistId
+      guessw :: String <- public "guess" $ minput ("guess" <> show i) ("guess " <> hint)
+      localIO $ print guessw
+      pabGuess word guessw
 
-    guessw <- minput "guess" ("guess " ++ hint) <|> addToOptions 
-    
-    local $ do
-        
-        wallet <- getCallerState
+    pabLock amo word= local $ do
+      wallet <- getSessionState
+      runPAB $ do
+        cid <- activateContract wallet Lock
+        callEndpointOnInstance cid "lock" LockParams {secretWord = word, amount = Ada.adaValueOf $ fromIntegral amo} -- ,lockIndex=0}
+        return cid
+
+    pabGuess word guessw =  do
+      local $ do
+        wallet <- getSessionState
+        liftIO $ print ("wallet", wallet)
         runPAB $ do
-            cid  <- runPAB $ Simulator.activateContract (Wallet wallet) Guess
-            callEndpointOnInstance  cid "guess" GuessParams{guessWord=guessw,guessIndex=ind}
-            waitNSlots 3
-            
-    minput ""  (if word== guessw then "YES" else "NO" :: Cloud ())
+          cid <- activateContract wallet Guess
+          callEndpointOnInstance cid "guess" GuessParams {guessWord = guessw} --,guessIndex=0}
+      minput "" (if word == guessw then "YES" else "NO" :: String)
 
-  availableOptions = local $ do
-      inputdatas <- liftIO $ readIORef locks -- `onNothing`  return [] 
-      foldr (<|>) empty $ map (\(InputData msg url) -> sendURL msg url) inputdatas
-      
-  addToOptions :: Loggable a => Cloud a
-  addToOptions=  local $ do
-        idata <- getState <|> error "No inputData. minput has not been used"
-        liftIO $ atomicModifyIORef' locks (\idatas -> (idata:idatas,())) 
-        empty
-        
-  balances= do
-    minput "bal" "display account balances" :: Cloud ()
-    local $ runPAB $ do
-      Simulator.logString @(Builtin  GuessGameContracts) "Balances at the end of the simulation"
-      b <-  Simulator.currentBalances
-      Simulator.logBalances @(Builtin GuessGameContracts) b
-      return()
+balances = do
+  minput "bal" ("wallet data" :: String) :: Cloud ()
+  Wallet walletid <- local $ getSessionState <|> error "no wallet?"
+  snap <- getWalletUtxoSnapshot walletid
+  minput "" snap :: Cloud ()
+  empty
+
+initHandlers= local $ do
+      handlers <- testnetHandlers
+      initPAB handlers
 ```
 
-After locking a number, the same user can guess his own lock. That is nice but it is not a multiuser workflow where any other user can guees the other's lock. That is the role of `addToOptions`  and `availableOptions` which add the guess link to a list and exposes all the guess links to other users who enter in the application.  The list is in a globla IORef (TBD: make this persistent!!!) wich contains  `InputData msg url` elements. `InputData` is created and stored in the state by minput.
+After locking a number, the same user can guess his own lock. That is nice but it is not a multiuser workflow where any other user can guees the other's lock. That is the role of `public`  and `published` which add the guess link to a list and exposes all the guess links to other users who entered in the application and created locks.  
 
 this line...
 
 ```haskell
- guessw <- minput "guess" ("guess a lock for " ++ hint) <|> addToOptions 
+ guessw <- public "guess" $ minput "guess" ("guess a lock for " ++ hint) 
 ```
 
 ..means: show a guess link to the user that sent the lock, but at the same time before that user respond, add this guess link to the options that every other user get once he enter his wallet.
 
 So we have a multinuser workflow in which one user locks and every other can guess. 
 
-Naturally,  by changing `addtoOptions` you can program more personalized options.
+Naturally,  by changing having different identifiers for `public` and `published` you can program more personalized options.
 
-Note that we don´t have to store the identifiers `ind` of the game, the word to gues etc in a off-chain session state, since they are local variables in the monad. In general, there is no need to manage database objects with the exception of the links, which allows entering at some step of the workflow. The rest of the off-chain data is managed as local variables. This simplifies the development a lot. Since such variables that determine the execution state can be stored in IPFS
+Note that we don´t have to store the variables like the word to gues etc in a off-chain session state, since they are local variables in the monad. In general, there is no need to manage database objects. It is stored with the state of the program, which can be stored in IPFS registers.This simplifies the development. 
 
-Also, in guess, now there a two wallets involved the one of the locker and the one of the guesser. the first can be retrived with `getState`; the second with `getCallerState` since that gives the state of the last one who entered in the `gameSequence` flow.
+As a detail, in guess, now there are two wallets involved in the lock-guess game: the one of the locker and the one of the guesser. the first can be retrived with `getState`; the second with `getSessionState`. The second gives the data of the user who executed a te previous `minput`.
 
 
 An example interaction of this second snippet is:
