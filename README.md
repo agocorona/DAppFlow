@@ -19,7 +19,7 @@ The monad will execute as off-chain Haskell code. It will be a continuous `do` e
 Example
 -------
 
- A person would describe the game as "first someone lock some amount and a key, then  any other could guess that key and receive the money. That sequentiality is expressend in  `gameSequence` below where `lock` and `guess` are.. humm.., in sequence:
+ A person would describe the game as "first someone lock some amount and a key, then  any other could guess that key and receive the money. That sequentiality is expressend in  `gameSequence` below where `lock` and `guess` are.. humm.., in sequence. 
 
 ```haskell
 main = keep $
@@ -73,6 +73,7 @@ main = keep $
           handlers <- testnetHandlers
           initPAB handlers
 ```
+This program makes use GuessGame.hs which defines the pab endpoints `guess` and `lock` It has been drawn from the public repository of Plutus and has been created using the plutus tools such is the Plutus Playground.
 
 After locking a number, the same user can guess his own lock. That is nice but it is not a multiuser workflow where any other user can guees the other's lock. That is the role of `public`  and `published` which add the guess link to a list and exposes all the guess links to other users who entered in the application and created locks.  
 
@@ -91,6 +92,8 @@ Naturally,  by changing having different identifiers for `public` and `published
 Note that we don´t have to store the variables like the word to gues etc in a off-chain session state, since they are local variables in the monad. In general, there is no need to manage database objects. It is stored with the state of the program, which can be stored in IPFS registers.This simplifies the development. 
 
 As a detail, in guess, now there are two wallets involved in the lock-guess game: the one of the locker and the one of the guesser. the first can be retrived with `getState`; the second with `getSessionState`. The second gives the data of the user who executed a te previous `minput`.
+
+There are many things to explain: `local` the code under `runPAB` etc. I can not explain it deeply here but let´s say that the first means that the code is executed in the local machine. It is necesary for logging and recovery of the thread state in this or other machine.  The code under runPAB invokes smart contract code that is- defined in ¡GuessGame.hs'.
 
 
 An example interaction of this second snippet is:

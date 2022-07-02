@@ -114,8 +114,8 @@ lock = endpoint @"lock" @LockParams $ \(LockParams secret amt) -> do
     logInfo @Haskell.String "SUBMITTING"
     ledgerTx <- submitTxConstraints gameInstance tx
     logInfo @Haskell.String $ "TRANSACTION=" <>  Haskell.show ledgerTx
-    -- void $ awaitTxConfirmed $ getCardanoTxId ledgerTx
-    -- logInfo @Haskell.String $ "Paid " 
+    void $ awaitTxConfirmed $ getCardanoTxId ledgerTx
+    logInfo @Haskell.String $ "Paid " 
 
 -- | The "guess" contract endpoint. See note [Contract endpoints]
 guess :: AsContractError e => Promise () GameSchema e ()
@@ -123,6 +123,7 @@ guess = endpoint @"guess" @GuessParams $ \(GuessParams theGuess) -> do
     -- Wait for script to have a UTxO of a least 1 lovelace
     logInfo @Haskell.String "Waiting for script to have a UTxO of at least 1 lovelace"
     utxos <- fundsAtAddressGeq gameAddress (Ada.lovelaceValueOf 1)
+    logInfo @Haskell.String "MORE THAN 1 lOVELACE"
 
     let redeemer = clearString theGuess
         tx       = collectFromScript utxos redeemer

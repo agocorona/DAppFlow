@@ -10,7 +10,7 @@ License-files:       LICENSE
 
 executable        pabtestnet
   main-is:            pabtestnet.hs
-  other-modules:      ContractExample.GuessGame, Wallet
+  other-modules:      ContractExample.GuessGame, Wallet, Effects
   hs-source-dirs:     .
   build-depends:       aeson
                      , bytestring
