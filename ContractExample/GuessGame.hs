@@ -28,7 +28,8 @@ import           Control.Monad         (void)
 import qualified Data.ByteString.Char8 as C
 import qualified Data.Map              as Map
 import           Data.Maybe            (catMaybes)
-import           Ledger                (Address, Datum (Datum), ScriptContext, TxOutTx, Validator, Value)
+import           Ledger                (Address, ScriptContext, TxOutTx, Value)
+import           Plutus.V1.Ledger.Scripts ( Datum (Datum),Validator)
 import qualified Ledger
 import qualified Ledger.Ada            as Ada
 import qualified Ledger.Constraints    as Constraints
@@ -64,7 +65,8 @@ gameInstance :: Scripts.TypedValidator Game
 gameInstance = Scripts.mkTypedValidator @Game
     $$(PlutusTx.compile [|| validateGuess ||])
     $$(PlutusTx.compile [|| wrap ||]) where
-        wrap = Scripts.wrapValidator @HashedString @ClearString
+        wrap = Scripts.mkUntypedValidator
+        -- wrap = Scripts.wrapValidator @HashedString @ClearString
 
 -- create a data script for the guessing game by hashing the string
 -- and lifting the hash to its on-chain representation

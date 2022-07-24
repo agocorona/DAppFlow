@@ -17,19 +17,19 @@ walletServerConfig:
     baseUrl: http://localhost:8090
 
 nodeServerConfig:
-  mscSocketPath: /home/user/plutus-apps/plutus-pab/test-node/testnet/node.sock
-  mscBaseUrl: "localhost"
-  mscKeptBlocks: 2160
-  mscNetworkId: "1097911063" # Testnet network ID (main net = empty string)
-  mscSlotConfig:
+  pscSocketPath: /home/user/plutus-apps/plutus-pab/test-node/testnet/node.sock
+  pscBaseUrl: "localhost"
+  pscKeptBlocks: 2160
+  pscNetworkId: "1097911063" # Testnet network ID (main net = empty string)
+  pscSlotConfig:
     scSlotZeroTime: 1596059091000 # Wednesday, July 29, 2020 21:44:51 - shelley launch time in milliseconds
     scSlotLength: 1000 # In milliseconds
-  mscFeeConfig:
+  pscFeeConfig:
     fcConstantFee:
       getLovelace: 10 # Constant fee per transaction in lovelace
     fcScriptsFeeFactor: 1.0 # Factor by which to multiply size-dependent scripts fee in lovelace
-  mscInitialTxWallets: []
-  mscNodeMode: AlonzoNode
+  pscInitialTxWallets: []
+  pscNodeMode: AlonzoNode
 
 chainIndexConfig:
   ciBaseUrl: http://localhost:9083
@@ -49,11 +49,11 @@ metadataServerConfig:
 developmentOptions:
   pabRollbackHistory: null
   pabResumeFrom:
-    # { "tag" : "PointAtGenesis" }
-    { "tag" : "Point"
-    , "pointBlockId" : "06229a55aac6f9126d40b458c944035578915ce5f50d728d311ba6cf7f64a669"
-    , "pointSlot" : { "getSlot" : 61818295 }
-    }
+    { "tag" : "PointAtGenesis" }
+    # { "tag" : "Point"
+    # , "pointBlockId" : "613d23b8df670e3692f4e4ab59b179778519de15999ee1a51077fcc02a48abaa"
+    # , "pointSlot" : { "getSlot" : 45656608 }
+    # }
 
 # Optional EKG Server Config
 # ----
