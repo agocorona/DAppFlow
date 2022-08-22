@@ -18,8 +18,9 @@ The monad will execute as off-chain Haskell code. It will be a continuous `do` e
 
 Example
 -------
+I take the simplest example: the lock/guess game.
 
- A person would describe the game as "first someone lock some amount and a key, then  any other could guess that key and receive the money. That sequentiality is expressend in  `gameSequence` below where `lock` and `guess` are.. humm.., in sequence. 
+ A person would describe the game as "first someone lock some amount of money and a key, then any other could guess that key and receive the money. That sequentiality is expressed in  `gameSequence` below where `lock` and `guess` are.. humm.., in sequence. 
 
 ```haskell
 main = keep $
@@ -73,9 +74,9 @@ main = keep $
           handlers <- testnetHandlers
           initPAB handlers
 ```
-This program makes use GuessGame.hs which defines the pab endpoints `guess` and `lock` It has been drawn from the public repository of Plutus and has been created using the plutus tools such is the Plutus Playground.
+This program makes use [GuessGame.hs](https://github.com/agocorona/DAppFlow/blob/main/ContractExample/GuessGame.hs) which defines the pab endpoints `guess` and `lock` It has been drawn from the public repository of Plutus and has been created using the plutus tools such is the Plutus Playground.
 
-After locking a number, the same user can guess his own lock. That is nice but it is not a multiuser workflow where any other user can guees the other's lock. That is the role of `public`  and `published` which add the guess link to a list and exposes all the guess links to other users who entered in the application and created locks.  
+After locking a number, the same user can guess his own lock. That is nice but it is not a multiuser workflow where any other user can guees the other's lock. That is the role of `public`  and `published` which add the guess link to a list and exposes all the guess links to other users once they enter in the application.
 
 this line...
 
@@ -83,20 +84,22 @@ this line...
  guessw <- public "guess" $ minput "guess" ("guess a lock for " ++ hint) 
 ```
 
-..means: show a guess link to the user that sent the lock, but at the same time before that user respond, add this guess link to the options that every other user get once he enter his wallet.
+..means: show a guess link to the user and publish this link, so that every other user get it once he enter his wallet.
 
 So we have a multinuser workflow in which one user locks and every other can guess. 
 
-Naturally,  by changing having different identifiers for `public` and `published` you can program more personalized options.
+Naturally,  by having different identifiers for `public` and `published` you can program more personalized options.
 
-Note that we don´t have to store the variables like the word to gues etc in a off-chain session state, since they are local variables in the monad. In general, there is no need to manage database objects. It is stored with the state of the program, which can be stored in IPFS registers.This simplifies the development. 
+Note that we don't need a database for state data; We don´t have to store the variables like the word to gues etc in a off-chain session state, since they are local variables in the monad. In general, there is no need to manage database objects. It is in the state of the whole thread, which can be stored in IPFS registers.This simplifies the development. 
 
 As a detail, in guess, now there are two wallets involved in the lock-guess game: the one of the locker and the one of the guesser. the first can be retrived with `getState`; the second with `getSessionState`. The second gives the data of the user who executed a te previous `minput`.
 
-There are many things to explain: `local` the code under `runPAB` etc. I can not explain it deeply here but let´s say that the first means that the code is executed in the local machine. It is necesary for logging and recovery of the thread state in this or other machine.  The code under runPAB invokes smart contract code that is- defined in ¡GuessGame.hs'.
+There are many things to explain: `local` the code under `runPAB` etc. I can not explain it deeply here but let´s say that the first means that the code is executed in the local machine. It is necesary for logging and recovery of the thread state in this or other machine.  The code under runPAB invokes smart contract code that is- defined in "GuessGame.hs' and in the standard plutus PAB libraries.
 
+Another good thing is that `minput` not only creates HTTP links, but also can work with console Input. 
+So we have a console application for free, that can be useful for testing purposes.
 
-An example interaction of this second snippet is:
+An example interaction of this code is:
 
 ```
 option: start
@@ -107,7 +110,7 @@ Connected to port: "8000"
 Enter  id               to: enter your wallet number       url:    http://localhost:8000/2/20002000/0/0/1/$int
 
 ```
-In another console:
+$int means a number. In another console we enter the wallet number '1'.
 
 ```
 
@@ -116,33 +119,44 @@ curl 'http://localhost:8000/2/20002000/0/0/1'
 [{ "msg"=enter lock amount, the key and a hint. Example: 100/myKey/\"number between 0..1000\""
 , "url"="http://localhost:8000/23/40002000/0/0/$int/$int/String"}
 
+entering 100 lovelaces as amount and 42 as the number:
+
 # curl 'http://localhost:8000/7/40002000/0/0/100/42/"number between 0..1000"'
 [{ "msg"="guess number between 0..1000", "url"="http://localhost:8000/17/70002000/0/0/$int"}]
 ```
-Enter another wallet number
+
+We simulate another user by entering another wallet number '2'
 
 ```
-curl 'http://localhost:8000/2/20002000/0/0/1/2/'
-[{ "msg"="enter a lock number", "url"="http://localhost:8000/19/40002000/0/0/$int"}
-,{ "msg"=""guess number between 0..1000", "cont"=http://localhost:8000/17/70002000/0/0/$int}]
+curl 'http://localhost:8000/2/20002000/0/0/2/'
+[{ "msg"="enter a lock number the key and a hint. Example: 100/myKey/\"number between 0..1000\""
+ , "url"="http://localhost:8000/19/40002000/0/0/$int"}
+,{ "msg"="guess number between 0..1000", "url"=http://localhost:8000/17/70002000/0/0/$int}]
 ```
 
-Now "juan", besided starting a new game, has received one more option above: to guess the number entered by the first wallet. $int means a number which is the key entered previously (42).
-
+Now the user of the wallet 2, besided starting a new game, has received one more option: to guess the number entered by the wallet 1. 
 ```
+
 # curl 'http://localhost:8000/9/70002000/0/0/42/'
 [{ "msg"="YES", "url"="http://localhost:8000/21/110002000/0/0/"}]
 
 ```
 He entered 42 and yes that was the number. The on-chain code will reflect it in the balances.
 
-The on-chain code is not shown here, but it is identical of the one of the  plutus canonical game example with the addition 
-of a index to allow differnt games at the same time. See [guessGameIndexed.hs](https://github.com/agocorona/DAppFlow/blob/main/ContractExample/GuessGameIndexed.hs) and compare it with [guessGame.hs](https://github.com/agocorona/DAppFlow/blob/main/ContractExample/GuessGame.hs)
+# Advantages:
+
+- Clear programming flow, following the specification
+- Automatic state data management, no databases.
+- Automatic restart of the program state on request
+- Automatic HTTP interface generaton
+- Automatic console program
+
 
 Status
 ======
 
-Currently this is under development ad I can not write a recipe for easy compilationand excecution of the examples
+Currently this is under development ad I can not write a recipe for easy compilationand excecution of the examples.
+IPFS serialization: first version working.
 
 
 
