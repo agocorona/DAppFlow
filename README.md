@@ -11,7 +11,9 @@ There are important barriers for developers that face the development of Plutus 
 
  - The novelty and the rapid evolution of Plutus and Cardano, 
  - the complexity of the Haskell language, 
- - the inherent complexity of server applications with a complex state and 
+ - the inherent complexity of server applications with a complex state, 
+ - the complexity of programs where different users interact,
+ - the complexity of programs whose execution may last for a long time: months or years and
  - the added complexity of programs whose state evolves along different steps.
 
 The objective of DAppFlow is to mitigate them by means of a library which packs in a internal monad a lot of the features needed for the creation of DApps and  expose a reduced surface of primitives to the programmer.
