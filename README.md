@@ -14,7 +14,7 @@ There are important barriers for developers that face the development of Plutus 
  - the inherent complexity of server applications with a complex state and 
  - the added complexity of programs whose state evolves along different steps.
 
-The first one is unavoidable but for the rest, is the objective of DAppFlow to mitigate them by means of a library which packs in a internal monad a lot of the features needed for the creation of DApps and  expose a reduced surface of primitives to the programmer.
+The objective of DAppFlow is to mitigate them by means of a library which packs in a internal monad a lot of the features needed for the creation of DApps and  expose a reduced surface of primitives to the programmer.
 
 
 Summary of the solution to the problem
