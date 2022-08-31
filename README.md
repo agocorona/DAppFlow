@@ -1,18 +1,28 @@
 Write Plutus smart contracts and DApps as continuous workflows.
 ===============================================================
 
+Plutus is the smart contract part of the Cardano/Ada blockchain. Cardano is programmed larguely using the Haskell language. Plutus has a set of libraries and tools for the creation of smart contracts: Plutus Playground, the Plutus Application Backend (PAB) and Marlowe are the main pieces.
+
+The PAB is the main target for programmers of Dapp applications with a server side. For light browser applications there are third-party general web services like blockfrost that hide the complexities of Plutus. DAppFlow is a library that facilitates the use case of the former, making the programmer's productivity and life as good or better, if possible, than the latter.
+
 Problem statement
 -----------------
+There are important barriers for developers that face the development of Plutus Smart Contracts among them: 
 
-DApp developpers maintainers and verifiers face the "endpoint hell" in Web, in chain and in out-chain code
+ - The novelty and the rapid evolution of Plutus and Cardano, 
+ - the complexity of the Haskell language, 
+ - the inherent complexity of server applications with a complex state and 
+ - the added complexity of programs whose state evolves along different steps.
+
+The first one is unavoidable but for the rest, is the objective of DAppFlow to mitigate them by means of a library which packs in a internal monad a lot of the features needed for the creation of DApps and  expose a reduced surface of primitives to the programmer.
 
 
 Summary of the solution to the problem
 ---------------------------------------
 
-- Express the entire program flow within a Haskell monad which set HTTP endpoints for microservices and uses Plutus endpoints.
-- DApps involving contracts take a long time to complete. some intended or unintended shutdowns of the application may happen. The program support stop and recovery of the execution state at the step where it was when it was stopped. 
-
+- To allow the expression of the entire program flow within a Haskell monad. This monad will create transparently, the HTTP endpoints for Browser clients, respond to console commands, uses IPFS storage and controls state management. In the other side  it invokes the off-chain and on-chain Plutus code created as usual, with Plutus Playground or Marlowe.
+- 
+- DApps involving contracts take a long time to complete. some intended or unintended shutdowns of the application may happen. The program support transparent stop and recovery of the execution state at the step where it was when it was -intendedly or unintendedly- stopped. 
 
 The monad will execute as off-chain Haskell code. It will be a continuous `do` expression that will define HTTP endpoints and will use Cardano endpoints. The result is a clear specification of the entire process as a "workflow" which is clearly readable, maintainable and verifiable.
 
@@ -74,7 +84,7 @@ main = keep $
           handlers <- testnetHandlers
           initPAB handlers
 ```
-This program makes use [GuessGame.hs](https://github.com/agocorona/DAppFlow/blob/main/ContractExample/GuessGame.hs) which defines the pab endpoints `guess` and `lock` It has been drawn from the public repository of Plutus and has been created using the plutus tools such is the Plutus Playground.
+This program makes use of [GuessGame.hs](https://github.com/agocorona/DAppFlow/blob/main/ContractExample/GuessGame.hs) which defines the pab endpoints `guess` and `lock` It has been drawn from the public repository of Plutus and has been created using the plutus tools such is the Plutus Playground.
 
 After locking a number, the same user can guess his own lock. That is nice but it is not a multiuser workflow where any other user can guees the other's lock. That is the role of `public`  and `published` which add the guess link to a list and exposes all the guess links to other users once they enter in the application.
 
