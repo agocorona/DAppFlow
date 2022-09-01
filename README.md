@@ -98,7 +98,7 @@ this line...
 
 ..means: show a guess link to the user and publish this link, so that every other user get it once he enter his wallet.
 
-So we have a multinuser workflow in which one user locks and every other can guess. 
+So we have a multiuser workflow in which one user locks and every other can guess. 
 
 Naturally,  by having different identifiers for `public` and `published` you can program more personalized options.
 
