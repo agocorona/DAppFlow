@@ -3,7 +3,7 @@ Write Plutus smart contracts and DApps as continuous workflows.
 
 Plutus is the smart contract part of the Cardano/Ada blockchain. Cardano is programmed larguely using the Haskell language. Plutus has a set of libraries and tools for the creation of smart contracts: Plutus Playground, the Plutus Application Backend (PAB) and Marlowe are the main pieces.
 
-The PAB is the main target for programmers of Dapp applications with a server side. For light browser applications there are third-party general web services like blockfrost that hide the complexities of Plutus. DAppFlow is a library that facilitates the use case of the former, making the programmer's productivity and life as good or better, if possible, than the latter by making full use of Haskell feaatures under the hood, not by increasing, but substantially reducing program complexity compared with other languages.
+The PAB is the main target for programmers of Dapp applications with a server side. For light browser applications there are third-party general web services like blockfrost, that hide the complexities of Plutus. DAppFlow is a library that facilitates the use case of the former, making the programmer's productivity and life as good or better, if possible, than the latter by making full use of Haskell feaatures under the hood, not by increasing, but substantially reducing program complexity compared with other languages.
 
 Problem statement
 -----------------
