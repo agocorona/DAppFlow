@@ -1,10 +1,10 @@
-Cabal-Version:      2.4
-Name:               test
-Version:            0.1.0.0
+Cabal-Version:       2.4
+Name:                test
+Version:             0.1.0.0
 Author:              Alberto Gómez Corona
 Maintainer:          agocorona@gmail.com
 Build-Type:          Simple
-Copyright:           © 2021 Lars Bruenjes
+Copyright:           © 2021 Alberto G. Corona
 License:             Apache-2.0
 License-files:       LICENSE
 
@@ -47,6 +47,44 @@ executable        pabtestnet
   default-language:    Haskell2010
   -- ghc-options:         -Wall -fobject-code -fno-ignore-interface-pragmas -fno-omit-interface-pragmas -fno-strictness -fno-spec-constr -fno-specialise
 
+executable            auction
+  main-is:            Auction/Auction.hs
+  other-modules:      Auction.EnglishAuction, Wallet, Effects
+  hs-source-dirs:     .
+  build-depends:       aeson
+                     , bytestring
+                     , base ^>=4.14.1.0
+                     , containers
+                     , playground-common
+                     , plutus-contract
+                     , plutus-ledger
+                     , plutus-ledger-constraints
+                     , plutus-tx-plugin
+                     , plutus-tx
+                     , plutus-pab
+                     , plutus-chain-index-core
+                     , cardano-wallet-core
+                     , iohk-monitoring
+                     , text
+                     , ghc-boot-th
+                     , optparse-applicative
+                     , aeson-pretty
+                     , freer-simple
+                     , freer-extras
+                     , data-default
+                     , stm
+                     , prettyprinter
+                     , plutus-ledger-api
+                     , plutus-use-cases
+                     , uuid
+                     , transient
+                     , transient-universe
+                     , yaml
+                     , mtl
+                     , TCache
+
+  default-language:    Haskell2010
+  ghc-options:         -w
 
 executable        pabtest
   main-is:            pabtest.hs
@@ -80,5 +118,71 @@ executable        pabtest
   default-language:    Haskell2010
   ghc-options:         -Wall -fobject-code -fno-ignore-interface-pragmas -fno-omit-interface-pragmas -fno-strictness -fno-spec-constr -fno-specialise
 
+executable        uniswap
+  main-is:            uniswaap/uniswap.hs
+  other-modules:      Effects
+  hs-source-dirs:     .
+  build-depends:       aeson
+                     , bytestring
+                     , base ^>=4.14.1.0
+                     , containers
+                     , playground-common
+                     , plutus-contract
+                     , plutus-ledger
+                     , plutus-ledger-constraints
+                     , plutus-tx-plugin
+                     , plutus-tx
+                     , plutus-pab
+                    --  , cardano-wallet-core
+                     , text
+                     , ghc-boot-th
+                     , optparse-applicative
+                     , aeson-pretty
+                     , freer-simple
+                     , freer-extras
+                     , data-default
+                     , stm
+                     , prettyprinter
+                     , plutus-ledger-api
+                     , plutus-use-cases
+                     , uuid
+                     , openapi3
+                     , transient
+                     , transient-universe
+  default-language:    Haskell2010
+  ghc-options:         -Wall -fobject-code -fno-ignore-interface-pragmas -fno-omit-interface-pragmas -fno-strictness -fno-spec-constr -fno-specialise
 
-  
+
+executable        uniswaporig
+  main-is:            uniswaap/uniswap.original.hs
+  other-modules:      Effects
+  hs-source-dirs:     .
+  build-depends:       aeson
+                     , bytestring
+                     , base ^>=4.14.1.0
+                     , containers
+                     , playground-common
+                     , plutus-contract
+                     , plutus-ledger
+                     , plutus-ledger-constraints
+                     , plutus-tx-plugin
+                     , plutus-tx
+                     , plutus-pab
+                    --  , cardano-wallet-core
+                     , text
+                     , ghc-boot-th
+                     , optparse-applicative
+                     , aeson-pretty
+                     , freer-simple
+                     , freer-extras
+                     , data-default
+                     , stm
+                     , prettyprinter
+                     , plutus-ledger-api
+                     , plutus-use-cases
+                     , uuid
+                     , openapi3
+
+  default-language:    Haskell2010
+  ghc-options:         -Wall -fobject-code -fno-ignore-interface-pragmas -fno-omit-interface-pragmas -fno-strictness -fno-spec-constr -fno-specialise
+

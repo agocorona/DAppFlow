@@ -18,7 +18,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 
-import ContractExample.GuessGameIndexed
+import ContractExample.Auction
 import Control.Concurrent.STM as STM
 import Control.Monad.Freer
 import qualified Control.Monad.Freer.Error as Error
@@ -168,6 +168,8 @@ instance {-# Overlappable #-} (Typeable a,ToJSON a, FromJSON a) => Loggable a wh
    serialize= serializetoJSON
    deserialize =deserializeJSON
 
+
+
 main= keep $ initNode $  do
     local $ initPAB simulatorHandlers
     
@@ -240,16 +242,16 @@ instance Pretty GuessGameContracts where
 
 instance HasDefinitions GuessGameContracts where
     getDefinitions = [Lock, Guess]
-    getContract = getGuessGameContracts
-    getSchema = getGuessGameSchema
+    getContract = getAuctionContracts
+    getSchema = getAuctionSchema
 
-getGuessGameSchema :: GuessGameContracts -> [FunctionSchema FormSchema]
-getGuessGameSchema = \case
+getAuctionSchema :: GuessGameContracts -> [FunctionSchema FormSchema]
+getAuctionSchema = \case
     Lock   -> Builtin.endpointsToSchemas @GameSchema
     Guess  -> Builtin.endpointsToSchemas @GameSchema
 
-getGuessGameContracts :: GuessGameContracts -> SomeBuiltin
-getGuessGameContracts = \case
+getAuctionContracts :: GuessGameContracts -> SomeBuiltin
+getAuctionContracts = \case
     Lock   -> SomeBuiltin $ (lock :: Promise () GameSchema T.Text ())
     Guess  -> SomeBuiltin $ (guess :: Promise () GameSchema T.Text ())
 {-

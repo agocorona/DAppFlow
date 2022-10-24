@@ -32,9 +32,9 @@ walletHeader req= [("service","Cardano wallet"),("type","HTTP")
         ,("nodeport","8090")
         ,("HTTPstr",req ++ " HTTP/1.1\r\nHost: $hostnode\r\n\r\n")]
 
-callGoogle :: BS.ByteString -> Cloud BS.ByteString
-callGoogle mod=  callService google mod
-google= [("service","google"),("type","HTTP")
-        ,("nodehost","www.google.com")
-        ,("nodeport","80")
-        ,("HTTPstr","GET /search?q=+$1+site:hackage.haskell.org HTTP/1.1\r\nHost: $hostnode\r\n\r\n" )]
+-- callGoogle :: BS.ByteString -> Cloud BS.ByteString
+-- callGoogle mod=  callService google mod
+-- google= [("service","google"),("type","HTTP")
+--         ,("nodehost","www.google.com")
+--         ,("nodeport","80")
+--         ,("HTTPstr","GET /search?q=+$1+site:hackage.haskell.org HTTP/1.1\r\nHost: $hostnode\r\n\r\n" )]

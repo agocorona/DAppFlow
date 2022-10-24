@@ -20,7 +20,7 @@
 
 import Cardano.BM.Setup (setupTrace_)
 import Cardano.Node.Types (PABServerConfig (..))
-import ContractExample.GuessGame
+import Auction.EnglishAuction
 import Control.Applicative
 
 import Control.Monad.IO.Class
@@ -61,32 +61,15 @@ import Effects
 import qualified Data.Map as M
 import Data.IORef
 import Data.ByteString.Lazy.Char8 hiding (head,empty)
-import Data.TCache (syncCache)
 
-type PAB a = PABC GuessGameContracts a
+
+type PAB a = PABC AuctionContracts a
 
 runPAB :: MonadIO m => PAB a -> m a
 runPAB = liftIO . runPABC
 
 
 instance ToRest WalletId
-
-
-mainseq = do
-  handlers <- testnetHandlers
-  let walletid = fromJust $ decode $ "\"17abbab9d64a5e1f8b267da9eda630d5de9c969c\""
-  Core.runPAB def handlers $ do
-    liftIO getChar
-
-    cid <- activateContract (Wallet Nothing walletid) Lock
-    liftIO $ print ("ACTIVATED", cid)
-    r <- callEndpointOnInstance' cid "lock" LockParams {secretWord = "42", amount = Ada.adaValueOf $ fromIntegral 10} -- ,lockIndex=0}
-    liftIO $ print ("RRRR=", r)
-    liftIO getChar
-    cid <- activateContract (Wallet Nothing walletid) Guess
-    callEndpointOnInstance cid "guess" GuessParams {guessWord = "42"}
-
-  liftIO getChar
 
 instance Default WalletId where
   def = fromJust $ decode "\"17abbab9d64a5e1f8b267da9eda630d5de9c969c\"" -- a testnet wallet
@@ -104,38 +87,42 @@ instance Default Wallet where
 main = keep $ initNode $ do
     initHandlers
     getWallet
-    gameSequence <|> published "guess" <|> balances <|> save
+    auctionSequence <|> published "bids"  <|> balances <|> save
     return ()
     
   where
     getWallet = do
-      POSTData (wallet :: WalletId) <- minput "wallet" ("enter your wallet number" :: String)
+      POSTData (alias :: String, wallet :: WalletId) <- minput "wallet" ("enter your alias and wallet number" :: String)
       localIO $ print ("WALLET", wallet)
       local $ setSessionState $ Wallet Nothing wallet
 
-    gameSequence = do
-      POSTData (amo :: Int, word :: String, hint :: String) <- minput "lock" ("enter lock amount, the key and a hint. Example: 100 myKey \"word of 5 letters\"" :: String)
-      cid <- pabLock amo word
+    auctionSequence = do
+      auction <- startIt
+      waitClose auction <|> public "bids" (bidIt auction) 
+      return()
+      where
+      startIt= do
+        POSTData(deadline,minbid,currency,token) <- minput "start" ("Enter 4 start parameters" :: String)
+        local $ do
+          let startparams= StartParams deadline minbid currency token
+          wallet <- getSessionState
+          runPAB $ do 
+            cid <- activateContract wallet Start
+            callEndpointOnInstance cid "start"  startparams
+            return startparams
 
-      i <- local genPersistId
-      guessw :: String <- public "guess" $ minput ("guess" <> show i) ("guess " <> hint)
-      pabGuess word guessw
-
-    pabLock amo word= local $ do
-      wallet <- getSessionState
-      runPAB $ do
-        cid <- activateContract wallet Lock
-        callEndpointOnInstance cid "lock" LockParams {secretWord = word, amount = Ada.adaValueOf $ fromIntegral amo} -- ,lockIndex=0}
-        return cid
-
-    pabGuess word guessw =  do
-      local $ do
-        wallet <- getSessionState
-        liftIO $ print ("wallet", wallet)
-        runPAB $ do
-          cid <- activateContract wallet Guess
-          callEndpointOnInstance cid "guess" GuessParams {guessWord = guessw} --,guessIndex=0}
-      minput "" (if word == guessw then "YES" else "NO" :: String)
+      bidIt auction= do
+        bid <- minput "start" $ ("Enter bid  for: currency: " <> (show $ spCurrency auction) <> "   token: " <> (show $ spToken auction)  :: String)
+        local $ do
+          wallet <- getSessionState
+          runPAB $ do 
+            cid <- activateContract wallet Bid
+            callEndpointOnInstance cid "bid" $ BidParams (spCurrency auction) (spToken auction) bid
+    
+      waitClose auction= local $ do
+        waait $ deadLine auction
+        runPAB close $ CloseParams (spCurrency auction) (spToken auction)
+     
 
     balances = do
       minput "bal" ("wallet data" :: String) :: Cloud ()
@@ -153,7 +140,7 @@ main = keep $ initNode $ do
         liftIO syncCache
         empty
 
-testnetHandlers :: MonadIO m => m (EffectHandlers (Builtin GuessGameContracts) (AppEnv GuessGameContracts))
+testnetHandlers :: MonadIO m => m (EffectHandlers (Builtin AuctionContracts) (AppEnv AuctionContracts))
 testnetHandlers = liftIO $ do
   config' <- decodeFileThrow "pab-config.yml"
   let config = config' {nodeServerConfig = (nodeServerConfig config') {pscPassphrase = Just "pab123456789"}}
@@ -168,26 +155,28 @@ testnetHandlers = liftIO $ do
     -- toPABMsg :: Trace m (LM.AppMsg (Builtin a)) -> Trace m (LM.PABLogMsg (Builtin a))
     toPABMsg = LM.convertLog LM.PABMsg
 
-data GuessGameContracts
-  = Lock
-  | Guess
+data AuctionContracts
+  = Start
+  | Bid
+  | Close
   deriving (Eq, Ord, Show, Generic, FromJSON, ToJSON)
 
-instance Pretty GuessGameContracts where
+instance Pretty AuctionContracts where
   pretty = viaShow
 
-instance HasDefinitions GuessGameContracts where
-  getDefinitions = [Lock, Guess]
-  getContract = getGuessGameContracts
-  getSchema = getGuessGameSchema
+-- instance HasDefinitions AuctionContracts where
+--   getDefinitions = [Start, Bid, Close]
+--   getContract = auctionContracts
+--   getSchema = getAuctionSchema
 
-getGuessGameSchema :: GuessGameContracts -> [FunctionSchema FormSchema]
-getGuessGameSchema = \case
-  Lock -> Builtin.endpointsToSchemas @GameSchema
-  Guess -> Builtin.endpointsToSchemas @GameSchema
+-- getAuctionSchema :: AuctionContracts -> [FunctionSchema FormSchema]
+-- getAuctionSchema = \case
+--   Start -> Builtin.endpointsToSchemas @GameSchema
+--   Bid -> Builtin.endpointsToSchemas @GameSchema
+--   Close -> Builtin.endpointsToSchemas @GameSchema
 
-getGuessGameContracts :: GuessGameContracts -> SomeBuiltin
-getGuessGameContracts = \case
-  Lock -> SomeBuiltin $ (lock :: Promise () GameSchema T.Text ())
-  Guess -> SomeBuiltin $ (guess :: Promise () GameSchema T.Text ())
-
+-- auctionContracts :: AuctionContracts -> SomeBuiltin
+-- auctionContracts = \case
+--   Start -> SomeBuiltin $ (start :: Promise () GameSchema T.Text ())
+--   Bid -> SomeBuiltin $ (bid :: Promise () GameSchema T.Text ())
+--   Close -> SomeBuiltin $ (close :: Promise () GameSchema T.Text ())
