@@ -101,6 +101,7 @@ executable        pabtest
                      , plutus-tx-plugin
                      , plutus-tx
                      , plutus-pab
+                     , plutus-chain-index-core
                      , text
                      , ghc-boot-th
                      , optparse-applicative
@@ -133,6 +134,8 @@ executable        uniswap
                      , plutus-tx-plugin
                      , plutus-tx
                      , plutus-pab
+
+
                     --  , cardano-wallet-core
                      , text
                      , ghc-boot-th

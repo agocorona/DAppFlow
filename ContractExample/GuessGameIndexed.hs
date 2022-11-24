@@ -38,7 +38,7 @@ import Ledger (Address, Datum (Datum), ScriptContext, Validator, Value)
 import Ledger qualified
 import Ledger.Ada qualified as Ada
 import Ledger.Constraints qualified as Constraints
-import Ledger.Tx (ChainIndexTxOut (..))
+import Plutus.ChainIndex.Types (ChainIndexTxOut (..))
 import Ledger.Typed.Scripts qualified as Scripts
 import Playground.Contract
 import Plutus.Contract

@@ -35,7 +35,7 @@ import GHC.Generics (Generic)
 import Data.OpenApi.Schema qualified as OpenApi
 import Prettyprinter (Pretty (..), viaShow)
 import Data.Monoid qualified as Monoid
-import Plutus.V1.Ledger.Ada (adaSymbol, adaToken)
+import Ledger.Ada (adaSymbol, adaToken)
 import qualified Plutus.PAB.Core.ContractInstance.STM as Instances
 
 import Wallet.Emulator.Types (Wallet (..))
@@ -45,7 +45,7 @@ import Transient.Base
 import Transient.Move.Utils
 import Transient.Move
 import Transient.Move.Web
-import Transient.Move.IPFS
+-- import Transient.Move.IPFS
 import Transient.Console
 import Control.Applicative
 -- import Effects
@@ -126,7 +126,7 @@ data WalletContract= WalletContract  Integer ContractInstanceId deriving (Typeab
 
 main= keep $ initNode $ do
     local $ do
-        setIPFS
+        -- setIPFS
         initPAB simulatorHandlers
     (us,cs) <- factoryCreate <|> balances
 
@@ -198,7 +198,7 @@ enterWallet us= do
 
 createPool w cid2 = do
     AllCoins coins ada <- local  getState
-    (adaamo :: Integer,coinAmo :: Integer) <- minput "create" ("create Pool, give me your combination of Ada/CoinA, for example 100000/500000 " :: String) 
+    (adaamo :: Integer,coinAmo :: Integer) <- minput "create" ("create Pool: give me your combination of Ada/CoinA, for example 100000/500000 " :: String) 
     local $ do
         -- Wallet w <- getSessionState
         -- let ada   = Uniswap.mkCoin adaSymbol adaToken
@@ -217,9 +217,9 @@ addPool= undefined
 closeFactory _= undefined :: Cloud ()
 removePool= undefined
 
-swapBtoA= undefined
+swapBtoA= error "swapBtoA not implemented"
 swapAtoB   = do
-    AllCoins coins ada <- local getState <|> (error "line 197")
+    AllCoins coins ada <- local getState <|> (error "getState swapAtoB")
     ammo <- minput "swapAB" ("amount of ADA to exchange" :: String) 
     swapCoins ada (coins Map.! "A")  (Amount ammo) 0
 
